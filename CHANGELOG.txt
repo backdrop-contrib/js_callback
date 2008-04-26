@@ -1,0 +1,16 @@
+// $Id$
+
+JavaScript callback handler x.x-x.x, xxxx-xx-xx
+-----------------------------------------------
+
+
+JavaScript callback handler 5.x-1.x, xxxx-xx-xx
+-----------------------------------------------
+
+
+
+JavaScript callback handler 5.x-1.0, 2008-04-26
+-----------------------------------------------
+Initial release of JavaScript callback handler.
+
+

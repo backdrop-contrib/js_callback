@@ -1,0 +1,3 @@
+; $Id$
+name = JavaScript callback handler
+description = A generic JavaScript callback handler for 3rd party modules.
