@@ -4,10 +4,17 @@ JavaScript callback handler x.x-x.x, xxxx-xx-xx
 -----------------------------------------------
 
 
-JavaScript callback handler 5.x-1.x, xxxx-xx-xx
+JavaScript callback handler 5.x-2.x, xxxx-xx-xx
 -----------------------------------------------
+Complete rewrite of JS callback handler adds a requirement for hook_js() which
+  should return an info array with allowed callback function names as keys and
+  their dependencies to load as values.
+Avoid devel.module to get in the way.
 Moved js_requirements() into js.install.
 Fixed lines do not wrap at 80 chars in README.txt.
+
+NOTE: The new code requires 3rd party modules to implement hook_js() to be able
+      to use the javascript callback handler. Refer to the README for details.
 
 
 JavaScript callback handler 5.x-1.0, 2008-04-26
