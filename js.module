@@ -1,12 +1,10 @@
 <?php
 // $Id$
 
-
 /**
  * @file
  * JavaScript callback handler module.
  *
  * Dummy file needed for Drupal's module system.
- * @see js.install
  */
 
