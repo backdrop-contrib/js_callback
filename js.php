@@ -28,6 +28,8 @@ drupal_bootstrap(DRUPAL_BOOTSTRAP_PATH);
 require_once './includes/common.inc';
 require_once './includes/locale.inc';
 
+// Prevent caching of JS output.
+$GLOBALS['conf']['cache'] = FALSE;
 // Prevent Devel from hi-jacking our output in any case.
 $GLOBALS['devel_shutdown'] = FALSE;
 
