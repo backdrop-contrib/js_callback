@@ -36,11 +36,11 @@ Bug reports, feature suggestions and latest developments:
 * Add the following lines in front of the existing RewriteRules in your
   .htaccess file:
 
-  # Rewrite JavaScript callback URLs of the form 'js.php?q=x'.
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{REQUEST_URI} ^\/js\/.*
-  RewriteRule ^(.*)$ js.php?q=$1 [L,QSA]
+    # Rewrite JavaScript callback URLs of the form 'js.php?q=x'.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} ^\/js\/.*
+    RewriteRule ^(.*)$ js.php?q=$1 [L,QSA]
 
 
 -- DEVELOPER INFORMATION --
@@ -56,7 +56,7 @@ As an example, we'll let example.module expose its function
 example_somefunction() to js.php. Its hook_js() implementation might look like
 this:
 
-  <?php
+<code>
   function example_js() {
     return array(
       'somefunction' => array(
@@ -66,7 +66,7 @@ this:
       ),
     );
   }
-  ?>
+</code>
 
 The hook_js() implementation above makes JS accept the following URL:
 
@@ -81,13 +81,13 @@ callback function.
 Note that it is wise to also register a corresponding menu path in hook_menu()
 to provide fallback functionality when js.php is not available:
 
-  <?php
+<code>
   $items[] = array(
     'path' => 'js/example/somefunction',
     'callback' => 'example_somefunction',
     'type' => MENU_CALLBACK,
   );
-  ?>
+</code>
 
 As stated above, js.php bootstraps Drupal to DRUPAL_BOOTSTRAP_PATH and includes
 common.inc and locale.inc.  This means that url(), l(), and t() functions are

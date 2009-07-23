@@ -1,7 +1,6 @@
 <?php
 // $Id$
 
-
 /**
  * @file
  * Ensures JavaScript callback handler has been setup properly.
