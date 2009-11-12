@@ -92,7 +92,7 @@ function js_execute_callback() {
     require_once "./includes/locale.inc";
 
     // Set the Drupal custom error handler.
-    set_error_handler('error_handler');
+    set_error_handler('drupal_error_handler');
     // Detect string handling method.
     if (function_exists('unicode_check')) {
       unicode_check();
@@ -116,7 +116,7 @@ function js_execute_callback() {
     // Initialize the localization system.
     // @todo We actually need to query the database whether the site has any
     // localization module enabled, and load it automatically.
-    $locale = locale_initialize();
+    $locale = drupal_init_language();
     // Invoke implementations of hook_init().
     module_invoke_all('init');
   }
