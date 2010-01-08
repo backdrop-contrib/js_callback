@@ -1,5 +1,9 @@
 // $Id$
 
+JavaScript callback handler x.x-x.x, xxxx-xx-xx
+-----------------------------------------------
+
+
 JavaScript callback handler 6.x-2.x, xxxx-xx-xx
 -----------------------------------------------
 Complete rewrite of JS callback handler.  Added a requirement for hook_js() in
@@ -25,3 +29,5 @@ Fixed lines do not wrap at 80 chars in README.txt.
 JavaScript callback handler 5.x-1.0, 2008-04-26
 -----------------------------------------------
 Initial release of JavaScript callback handler.
+
+

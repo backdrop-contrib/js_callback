@@ -11,7 +11,7 @@
  * @{
  * Status codes for JavaScript callbacks.
  *
- * @todo Use regular defines from menu.inc?
+ * @todo Use regular defines from menu.inc.
  */
 
 define('JS_FOUND', 1);
