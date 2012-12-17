@@ -1,12 +1,11 @@
 <?php
-
 /**
  * @file
  * Ensures JavaScript callback handler has been setup properly.
  */
 
 /**
- * Implementation of hook_requirements().
+ * Implements hook_requirements().
  */
 function js_requirements($phase) {
   $requirements = array();
@@ -14,7 +13,7 @@ function js_requirements($phase) {
   switch ($phase) {
     case 'install':
     case 'runtime':
-      $path = drupal_get_path('module', 'js') .'/js.php';
+      $path = drupal_get_path('module', 'js') . '/js.php';
       $title = $t('JavaScript callback handler');
       // Warn about missing js.php in root directoy.
       if (file_exists($path) && file_exists('js.php') && md5_file($path) != md5_file('js.php')) {
@@ -26,7 +25,7 @@ function js_requirements($phase) {
         );
       }
       // Warn about moved (instead of copied) js.php.
-      else if (!file_exists($path)) {
+      elseif (!file_exists($path)) {
         $requirements['js'] = array(
           'title' => $title,
           'description' => $t('You probably <em>moved</em> rather than <em>copied</em> the js.php file from %mod to %core. You should leave a copy of this file in the module directory so that you will not lose this file when you upgrade to another revision of Drupal.', array('%core' => 'js.php', '%mod' => $path)),
@@ -34,7 +33,7 @@ function js_requirements($phase) {
           'value' => $t('js.php no longer exists in the js directory'),
         );
       }
-      else if ($phase == 'runtime') {
+      elseif ($phase == 'runtime') {
         // Warn about disabled clean URLs.
         if (!variable_get('clean_url', FALSE)) {
           $requirements['js'] = array(
@@ -45,10 +44,10 @@ function js_requirements($phase) {
           );
         }
         // Warn about missing RewriteRule in .htaccess.
-        else if (strpos(file_get_contents('.htaccess'), 'js.php') === FALSE) {
+        elseif (strpos(file_get_contents('.htaccess'), 'js.php') === FALSE) {
           $requirements['js'] = array(
             'title' => $title,
-            'description' => $t('In order for increasing performance of JavaScript callbacks, please add the required <a href="!readme">RewriteRule</a>', array('!readme' => url(drupal_get_path('module', 'js') .'/README.txt'))),
+            'description' => $t('In order for increasing performance of JavaScript callbacks, please add the required <a href="!readme">RewriteRule</a>', array('!readme' => url(drupal_get_path('module', 'js') . '/README.txt'))),
             'severity' => REQUIREMENT_WARNING,
             'value' => $t('Add Apache RewriteRule to .htaccess'),
           );

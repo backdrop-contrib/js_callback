@@ -1,36 +1,60 @@
 <?php
-
 /**
  * @file
  * Callback page that serves custom JavaScript requests on a Drupal installation.
  */
 
 /**
- * @name JavaScript callback status codes.
- * @{
- * Status codes for JavaScript callbacks.
- *
- * @todo Use regular defines from menu.inc.
+ * @var The Drupal root
  */
-
-define('JS_FOUND', 1);
-define('JS_NOT_FOUND', 2);
-define('JS_ACCESS_DENIED', 3);
-define('JS_SITE_OFFLINE', 4);
+define('DRUPAL_ROOT', getcwd());
 
 /**
- * @} End of "Menu status codes".
+ * @name Return constants, copies from menu.inc.
+ * @{
+ * The constants are copied to be able to drop the menu.inc depdendency
+ */
+define('JS_MENU_NOT_FOUND', 2);
+define('JS_MENU_ACCESS_DENIED', 3);
+/**
+ * @} End of "Required core files".
  */
 
-require_once './includes/bootstrap.inc';
-drupal_bootstrap(DRUPAL_BOOTSTRAP_PATH);
-require_once './includes/common.inc';
-require_once './includes/locale.inc';
+/**
+ * @name Required core files
+ * @{
+ * The minimal core files required to be able to run a js request
+ */
+require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
+require_once DRUPAL_ROOT . '/includes/common.inc';
+require_once DRUPAL_ROOT . '/includes/module.inc';
+require_once DRUPAL_ROOT . '/includes/unicode.inc';
+require_once DRUPAL_ROOT . '/includes/file.inc';
+/**
+ * @} End of "Required core files".
+ */
 
-// Prevent caching of JS output.
-$GLOBALS['conf']['cache'] = FALSE;
+// Do basic bootstrap to make sure the database can be accessed
+drupal_bootstrap(DRUPAL_BOOTSTRAP_DATABASE);
+
 // Prevent Devel from hi-jacking our output in any case.
 $GLOBALS['devel_shutdown'] = FALSE;
+
+$return = js_execute_callback();
+
+// Menu status constants are integers; page content is a string.
+if (is_int($return)) {
+  // Make sure the full bootstrap has ran
+  drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+
+  // Deliver error page
+  drupal_deliver_page($return);
+}
+elseif (isset($return)) {
+  // If JavaScript callback did not exit, print any value (including an empty
+  // string) except NULL or undefined:
+  drupal_json_output($return);
+}
 
 /**
  * Loads the requested module and executes the requested callback.
@@ -39,8 +63,6 @@ $GLOBALS['devel_shutdown'] = FALSE;
  *   The callback function's return value or one of the JS_* constants.
  */
 function js_execute_callback() {
-  global $locale;
-
   $args = explode('/', $_GET['q']);
 
   // Strip first argument 'js'.
@@ -49,141 +71,113 @@ function js_execute_callback() {
   // Determine module to load.
   $module = check_plain(array_shift($args));
   if (!$module || !drupal_load('module', $module)) {
-    return JS_ACCESS_DENIED;
+    return JS_MENU_ACCESS_DENIED;
   }
 
   // Get info hook function name.
-  $function = $module .'_js';
+  $function = $module . '_js';
   if (!function_exists($function)) {
-    return JS_NOT_FOUND;
+    return JS_MENU_NOT_FOUND;
   }
 
   // Get valid callbacks.
   $valid_callbacks = $function();
-
-  $callback = check_plain(array_shift($args));
-  if (!isset($valid_callbacks[$callback]) || !function_exists($valid_callbacks[$callback]['callback'])) {
-    return JS_NOT_FOUND;
+  //Validate the availability of the callback
+  $callback_args = $args;
+  $callback_valid = FALSE;
+  while (!empty($callback_args)) {
+    $callback = check_plain(implode('/', $callback_args));
+    if (isset($valid_callbacks[$callback])) {
+      break;
+    }
+    else {
+      // pop another parameter off the incoming args and check again
+      array_pop($callback_args);
+    }
   }
 
-  $info = $valid_callbacks[$callback];
-  $full_boostrap = FALSE;
+  //Validate the callback
+  if (!isset($valid_callbacks[$callback])) {
+    return JS_MENU_NOT_FOUND;
+  }
+
+  // If the callback function is located in another file, load that file now.
+  if (isset($valid_callbacks[$callback]['file']) && ($filepath = drupal_get_path('module', $module) . '/' . $valid_callbacks[$callback]['file']) && file_exists($filepath)) {
+    require_once $filepath;
+  }
+
+  // Validate the existance of the defined callback
+  if (!function_exists($valid_callbacks[$callback]['callback'])) {
+    return JS_MENU_NOT_FOUND;
+  }
 
   // Bootstrap to required level.
-  if (!empty($info['bootstrap'])) {
-    drupal_bootstrap($info['bootstrap']);
-    $full_boostrap = ($info['bootstrap'] == DRUPAL_BOOTSTRAP_FULL);
+  $full_boostrap = FALSE;
+  if (!empty($valid_callbacks[$callback]['bootstrap'])) {
+    drupal_bootstrap($valid_callbacks[$callback]['bootstrap']);
+    $full_boostrap = ($valid_callbacks[$callback]['bootstrap'] == DRUPAL_BOOTSTRAP_FULL);
   }
 
   if (!$full_boostrap) {
     // The following mimics the behavior of _drupal_bootstrap_full().
-    // @see _drupal_bootstrap_full(), common.inc
+    // The difference is that not all modules and includes are loaded
+    // @see _drupal_bootstrap_full()
 
-    // Load required include files.
-    if (isset($info['includes']) && is_array($info['includes'])) {
-      foreach ($info['includes'] as $include) {
+    // Load required include files based on the callback
+    if (isset($valid_callbacks[$callback]['includes']) && is_array($valid_callbacks[$callback]['includes'])) {
+      foreach ($valid_callbacks[$callback]['includes'] as $include) {
         if (file_exists("./includes/$include.inc")) {
           require_once "./includes/$include.inc";
         }
       }
     }
-    // Always load locale.inc.
-    require_once "./includes/locale.inc";
 
-    // Set the Drupal custom error handler.
-    set_error_handler('drupal_error_handler');
     // Detect string handling method.
-    if (function_exists('unicode_check')) {
-      unicode_check();
-    }
+    unicode_check();
+
     // Undo magic quotes.
     fix_gpc_magic();
 
+    // Make sure all stream wrappers are registered.
+    file_get_stream_wrappers();
+
     // Load required modules.
     $modules = array($module => 0);
-    if (isset($info['dependencies']) && is_array($info['dependencies'])) {
-      // Intersect list with active modules to avoid loading uninstalled ones.
-      $dependencies = array_intersect(module_list(TRUE, FALSE), $info['dependencies']);
-      foreach ($dependencies as $dependency) {
-        drupal_load('module', $dependency);
+    if (isset($valid_callbacks[$callback]['dependencies']) && is_array($valid_callbacks[$callback]['dependencies'])) {
+      foreach ($valid_callbacks[$callback]['dependencies'] as $dependency) {
+        if (!drupal_load('module', $dependency)) {
+          throw new Exception(t('Error, the dependancy (!module) for this callback is not installed.', array('!module' => $dependency)));
+        }
         $modules[$dependency] = 0;
       }
     }
     // Reset module list.
     module_list(FALSE, TRUE, FALSE, $modules);
 
-    // Initialize the localization system.
-    // @todo We actually need to query the database whether the site has any
-    // localization module enabled, and load it automatically.
-    $locale = drupal_init_language();
+    // If access arguments are passed, boot to SESSION and validate if the user
+    // has access to this callback
+    if(!empty($valid_callbacks[$callback]['access arguments']) || !empty($valid_callbacks[$callback]['access callback'])) {
+      drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
+
+      // If no callback is provided, default to user_access
+      if (!isset($valid_callbacks[$callback]['access callback'])) {
+        $valid_callbacks[$callback]['access callback'] = 'user_access';
+      }
+
+      if($valid_callbacks[$callback]['access callback'] == 'user_access') {
+        // Ensure the user module is available
+        drupal_load('module', 'user');
+      }
+
+      if(!call_user_func_array($valid_callbacks[$callback]['access callback'], $valid_callbacks[$callback]['access arguments'])) {
+        return JS_MENU_ACCESS_DENIED;
+      }
+    }
+    
     // Invoke implementations of hook_init().
     module_invoke_all('init');
   }
 
   // Invoke callback function.
-  return call_user_func_array($info['callback'], $args);
+  return call_user_func_array($valid_callbacks[$callback]['callback'], $args);
 }
-
-/**
- * l() calls check_url(), which needs to check for XSS attacks.
- */
-function filter_xss_bad_protocol($string, $decode = TRUE) {
-  static $allowed_protocols;
-  if (!isset($allowed_protocols)) {
-    $allowed_protocols = array_flip(variable_get('filter_allowed_protocols', array('http', 'https', 'ftp', 'news', 'nntp', 'telnet', 'mailto', 'irc', 'ssh', 'sftp', 'webcal')));
-  }
-
-  // Get the plain text representation of the attribute value (i.e. its meaning).
-  if ($decode) {
-    $string = decode_entities($string);
-  }
-
-  // Iteratively remove any invalid protocol found.
-
-  do {
-    $before = $string;
-    $colonpos = strpos($string, ':');
-    if ($colonpos > 0) {
-      // We found a colon, possibly a protocol. Verify.
-      $protocol = substr($string, 0, $colonpos);
-      // If a colon is preceded by a slash, question mark or hash, it cannot
-      // possibly be part of the URL scheme. This must be a relative URL,
-      // which inherits the (safe) protocol of the base document.
-      if (preg_match('![/?#]!', $protocol)) {
-        break;
-      }
-      // Per RFC2616, section 3.2.3 (URI Comparison) scheme comparison must be case-insensitive.
-      // Check if this is a disallowed protocol.
-      if (!isset($allowed_protocols[strtolower($protocol)])) {
-        $string = substr($string, $colonpos + 1);
-      }
-    }
-  } while ($before != $string);
-  return check_plain($string);
-}
-
-$return = js_execute_callback();
-
-// Menu status constants are integers; page content is a string.
-if (is_int($return)) {
-  drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
-  switch ($return) {
-    case JS_NOT_FOUND:
-      drupal_not_found();
-      break;
-
-    case JS_ACCESS_DENIED:
-      drupal_access_denied();
-      break;
-
-    case JS_SITE_OFFLINE:
-      drupal_site_offline();
-      break;
-  }
-}
-elseif (isset($return)) {
-  // If JavaScript callback did not exit, print any value (including an empty
-  // string) except NULL or undefined:
-  print drupal_to_js($return);
-}
-
