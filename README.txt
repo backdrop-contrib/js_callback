@@ -79,6 +79,9 @@ speeds up small Ajax requests.
   RewriteCond %{REQUEST_URI} ^\/js\/.*
   RewriteRule ^(.*)$ js.php?q=$1 [L,QSA]
 
+  Note: You need to include the base path before the \/js\/ if you configured
+  this in your .htaccess.
+
 5. MODULE INTEGRATION API
 =========================
 
@@ -197,16 +200,6 @@ please create an issue in the queue and we'll look at including it by default.
 
 Project page: http://drupal.org/project/js
 
-
-Authors of the Drupal 6 version:
-* Daniel F. Kudwien (sun) - http://drupal.org/user/54136
-* Stefan M. Kudwien (smk-ka) - http://drupal.org/user/48898
-
-The Drupal 6 version has been sponsored by UNLEASHED MIND
-Specialized in consulting and development of Drupal powered sites, our services 
-include installation, development, theming, customization, and hosting to 
-get you started. 
-
 - Drupal 7 -
 
 Authors:
@@ -217,3 +210,14 @@ The Drupal 7 update has been sponsored by SYNETIC.
 Full service Drupal specialist. From custom made webapplications to content 
 management systems, intranet and e-commerce shops. Visit http://www.synetic.nl 
 for more information.
+
+- Drupal 6 -
+
+Authors:
+* Daniel F. Kudwien (sun) - http://drupal.org/user/54136
+* Stefan M. Kudwien (smk-ka) - http://drupal.org/user/48898
+
+The Drupal 6 version has been sponsored by UNLEASHED MIND
+Specialized in consulting and development of Drupal powered sites, our services 
+include installation, development, theming, customization, and hosting to 
+get you started. 
