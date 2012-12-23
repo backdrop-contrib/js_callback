@@ -53,10 +53,8 @@ Bug reports, feature suggestions and latest developments:
 3. TECHNICAL
 ============
 
-Just like its role model, this module is not really one. Actually it is mainly
-a conditional replacement for Drupal's index.php based on .htaccess (or
-whatever equivalent in other web servers; I'm not familiar with other than
-apache).
+This module is not really one. Actually it is mainly a conditional replacement
+for Drupal's index.php based on Apache .htaccess directives.
 
 With mod_rewrite enabled ("clean urls"), it catches all calls to callback
 paths starting with "js/" and passes them to a reduced loader instead of
