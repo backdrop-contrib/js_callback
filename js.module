@@ -9,19 +9,20 @@
  */
 function js_menu() {
   $items = array();
-  $items['admin/config/development/performance/js'] = array(
+  $items['admin/config/system/js'] = array(
     'title' => 'JS Callback handler',
     'description' => 'Configure JavaScript callback handler.',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('js_configure_form'),
     'access arguments' => array('administer js'),
     'file' => 'js.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
   );
-  $items['admin/config/development/performance/js/download'] = array(
+  $items['admin/config/system/js/download'] = array(
     'page callback' => 'js_download_handler',
     'access arguments' => array('administer js'),
     'file' => 'js.admin.inc',
-    'type' => MENU_CALLBACK
+    'type' => MENU_CALLBACK,
   );
   return $items;
 }
