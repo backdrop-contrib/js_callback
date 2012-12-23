@@ -71,7 +71,7 @@ speeds up small Ajax requests.
 
 * Enable clean URLs in drupal at admin/settings/clean-urls.
 
-* Configure the JS callback via admin/config/development/performance/js
+* Configure the JS callback via admin/config/system/js
 
 * Download the js.php file from the configuration page to the root directory 
   of your Drupal installation (the place where your Drupal .htaccess and 
