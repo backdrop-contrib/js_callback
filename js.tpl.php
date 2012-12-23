@@ -96,6 +96,7 @@ function js_execute_callback() {
       break;
     }
   }
+  array_shift($args);
 <?php else: ?>
   $callback = check_plain(array_shift($args));
 <?php endif; ?>
