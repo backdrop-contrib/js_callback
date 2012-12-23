@@ -1,4 +1,5 @@
-<?php
+<?php print '<?php'; ?>
+
 /**
  * @file
  * Callback page that serves custom JavaScript requests on a Drupal installation.
@@ -30,6 +31,9 @@ require_once DRUPAL_ROOT . '/includes/common.inc';
 require_once DRUPAL_ROOT . '/includes/module.inc';
 require_once DRUPAL_ROOT . '/includes/unicode.inc';
 require_once DRUPAL_ROOT . '/includes/file.inc';
+<?php if($options['complex_path'] == TRUE): ?>
+require_once DRUPAL_ROOT . '/includes/menu.inc';
+<?php endif; ?>
 /**
  * @} End of "Required core files".
  */
@@ -82,29 +86,31 @@ function js_execute_callback() {
 
   // Get valid callbacks.
   $valid_callbacks = $function();
-  //Validate the availability of the callback
-  $callback_args = $args;
-  $callback_valid = FALSE;
-  while (!empty($callback_args)) {
-    $callback = check_plain(implode('/', $callback_args));
-    if (isset($valid_callbacks[$callback])) {
+
+  // Get the callback
+<?php if($options['complex_path'] == TRUE): ?>
+  $ancestors = menu_get_ancestors($args);
+  foreach($ancestors AS $path) {
+    if(isset($valid_callbacks[$path])) {
+      $callback = $path;
       break;
     }
-    else {
-      // pop another parameter off the incoming args and check again
-      array_pop($callback_args);
-    }
   }
+<?php else: ?>
+  $callback = check_plain(array_shift($args));
+<?php endif; ?>
 
   //Validate the callback
   if (!isset($valid_callbacks[$callback])) {
     return JS_MENU_NOT_FOUND;
   }
 
+<?php if($options['other_file'] == TRUE): ?>
   // If the callback function is located in another file, load that file now.
   if (isset($valid_callbacks[$callback]['file']) && ($filepath = drupal_get_path('module', $module) . '/' . $valid_callbacks[$callback]['file']) && file_exists($filepath)) {
     require_once $filepath;
   }
+<?php endif; ?>
 
   // Validate the existance of the defined callback
   if (!function_exists($valid_callbacks[$callback]['callback'])) {
@@ -154,6 +160,7 @@ function js_execute_callback() {
     // Reset module list.
     module_list(FALSE, TRUE, FALSE, $modules);
 
+<?php if($options['access_validation'] == TRUE): ?>
     // If access arguments are passed, boot to SESSION and validate if the user
     // has access to this callback
     if(!empty($valid_callbacks[$callback]['access arguments']) || !empty($valid_callbacks[$callback]['access callback'])) {
@@ -169,14 +176,22 @@ function js_execute_callback() {
         drupal_load('module', 'user');
       }
 
-      if(!call_user_func_array($valid_callbacks[$callback]['access callback'], $valid_callbacks[$callback]['access arguments'])) {
+      if(!call_user_func_array($valid_callbacks[$callback]['access callback'], !empty($valid_callbacks[$callback]['access arguments']) ? $valid_callbacks[$callback]['access arguments'] : array())) {
         return JS_MENU_ACCESS_DENIED;
       }
     }
-    
+<?php endif; ?>
+
     // Invoke implementations of hook_init().
     module_invoke_all('init');
   }
+
+<?php if($options['page_arguments'] == TRUE): ?>
+  // If there are page arguments defined add them to the callback call.
+  if(isset($valid_callbacks[$callback]['page arguments'])) {
+    $args = array_intersect_key($args, array_flip($valid_callbacks[$callback]['page arguments']));
+  }
+<?php endif; ?>
 
   // Invoke callback function.
   return call_user_func_array($valid_callbacks[$callback]['callback'], $args);

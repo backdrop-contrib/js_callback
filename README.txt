@@ -68,21 +68,50 @@ speeds up small Ajax requests.
 ===============
 
 * Install as usual, see http://drupal.org/node/70151 for further information.
-* Copy js.php to the root directory of your Drupal installation
-  (the place where your Drupal .htaccess and index.php is located).
+
 * Enable clean URLs in drupal at admin/settings/clean-urls.
 
-* Add the following lines in front of the existing RewriteRules in your
-  .htaccess file:
-  
-  # Rewrite JavaScript callback URLs of the form 'js.php?q=x'.
-  RewriteCond %{REQUEST_URI} ^\/js\/.*
-  RewriteRule ^(.*)$ js.php?q=$1 [L,QSA]
+* Configure the JS callback via admin/config/development/performance/js
 
-  Note: You need to include the base path before the \/js\/ if you configured
-  this in your .htaccess.
+* Download the js.php file from the configuration page to the root directory 
+  of your Drupal installation (the place where your Drupal .htaccess and 
+  index.php is located).
 
-5. MODULE INTEGRATION API
+* Add the lines of .htaccess code from the configuration page in front of the 
+  existing RewriteRules in your .htaccess file.
+
+5. CONFIGURATION
+===============
+
+Because this module is all about performance it is configurable which features
+are supported in the js.php handler. The standard feature set supports the
+following options:
+- includes
+  Which includes are required for the callback to be able to run.
+
+- dependencies
+  The required modules for the callback to be able to run.
+
+- bootstrap
+  The bootstrap level for this callback. Defaults to DATABASE.
+
+The following options can be (individually) enabled:
+
+- Access arguments / Access callback
+  Adds basic support for authorization
+
+- Complex paths
+  Enabled the support for complex paths (including slashes and basic 
+  wildcards (%))
+
+- Page arguments
+  Enables specification which parts of the path are passed as arguments 
+  (defaults to all the parts after the callbacl)
+
+- File support
+  Enables the callback to be in another file, defined in the callback settings.
+
+6. MODULE INTEGRATION API
 =========================
 
 This module requires your server to point all paths starting with js/ to js.php
@@ -108,8 +137,8 @@ this:
         'callback'     => 'example_somefunction',
         'includes'     => array('theme', 'unicode'),
         'dependencies' => array('locale', 'filter', 'user'),
-        'file'         => 'includes/example.inc',
         'bootstrap'    => DRUPAL_BOOTSTRAP_CONSTANT,
+        'file'         => 'includes/example.inc',
         'access arguments' => array('e.g. permission'),
         'access callback'  => 'callback function'
       ),
@@ -150,8 +179,9 @@ include file in these options and do this untill all errors are resolved.
 - Access checks -
 
 By default the js module doesn't peform any kind of access check. 
-Limited access checks are supported by adding the access arguments and the 
-access callback (optional) to the js callback.
+Limited access checks are supported by enabling the option in the 
+configuration form and adding the access arguments and the access callback 
+(optional) to the js callback.
 
 The access arguments are passed to the access callback. The access arguments 
 implementation is very basic and does not support dynamic arguments. The 
@@ -206,7 +236,7 @@ Authors:
 * David Herminghaus (doitDave) - http://drupal.org/user/833794
 * Michiel Nugter (michielnugter) - http://drupal.org/user/1023784
 
-The Drupal 7 update has been sponsored by SYNETIC.
+The Drupal 7 update has been sponsored by SYNETIC
 Full service Drupal specialist. From custom made webapplications to content 
 management systems, intranet and e-commerce shops. Visit http://www.synetic.nl 
 for more information.

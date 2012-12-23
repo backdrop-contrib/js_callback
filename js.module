@@ -1,8 +1,50 @@
 <?php
-
 /**
  * @file
  * JavaScript callback handler module.
- *
- * Dummy file needed for Drupal's module system.
  */
+
+/**
+ * Implements hook_menu().
+ */
+function js_menu() {
+  $items = array();
+  $items['admin/config/development/performance/js'] = array(
+    'title' => 'JS Callback handler',
+    'description' => 'Configure JavaScript callback handler.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('js_configure_form'),
+    'access arguments' => array('administer js'),
+    'file' => 'js.admin.inc',
+  );
+  $items['admin/config/development/performance/js/download'] = array(
+    'page callback' => 'js_download_handler',
+    'access arguments' => array('administer js'),
+    'file' => 'js.admin.inc',
+    'type' => MENU_CALLBACK
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function js_permission() {
+  return array(
+    'administer js' => array(
+      'title' => t('Administer JavaScript callback handler settings'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_theme().
+ */
+function js_theme() {
+  return array(
+    'js_callback_handler' => array(
+      'variables' => array('options' => NULL),
+      'template' => 'js',
+    )
+  );
+}
