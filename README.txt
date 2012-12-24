@@ -376,7 +376,7 @@ bb) Implement hook_js()
           'callback' => 'easypicture_rename',
           'bootstrap' => DRUPAL_BOOTSTRAP_SESSION,
           'includes' => array('path'),
-          'dependencies' => array('node'),
+          'dependencies' => array('node', 'user'),
         ),
         'paint/%/forms' => array(
           'callback' => 'easypicture_paint_forms',
