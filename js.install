@@ -50,9 +50,14 @@ function js_requirements($phase) {
  * Implements hook_uninstall().
  */
 function js_uninstall() {
-  // Delete used variables
-  variable_del('js_callback_handler_complex_path');
-  variable_del('js_callback_handler_page_arguments');
-  variable_del('js_callback_handler_access_validation');
-  variable_del('js_callback_handler_other_file');
+  // Delete used variables.
+  foreach (array(
+    'js_callback_handler_complex_path',
+    'js_callback_handler_page_arguments',
+    'js_callback_handler_access_validation',
+    'js_callback_handler_other_file',
+    'js_autogenerate_hash'
+  ) as $varname) {
+    variable_del($varname);
+  }
 }
