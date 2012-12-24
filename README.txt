@@ -104,7 +104,7 @@ The following options can be (individually) enabled:
 
 - Page arguments
   Enables specification which parts of the path are passed as arguments 
-  (defaults to all the parts after the callbacl)
+  (defaults to all the parts after the callback)
 
 - File support
   Enables the callback to be in another file, defined in the callback settings.
