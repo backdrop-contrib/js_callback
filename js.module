@@ -24,6 +24,12 @@ function js_menu() {
     'file' => 'js.admin.inc',
     'type' => MENU_CALLBACK,
   );
+  $items['admin/config/system/js/generate'] = array(
+    'page callback' => 'js_generation_handler',
+    'access arguments' => array('write to root'),
+    'file' => 'js.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
   return $items;
 }
 
@@ -34,6 +40,10 @@ function js_permission() {
   return array(
     'administer js' => array(
       'title' => t('Administer JavaScript callback handler settings'),
+    ),
+    'write to root' => array(
+      'title' => t('Allow saving the JS callback file directly to the Drupal root directory'),
+      'restrict access' => TRUE,
     ),
   );
 }
@@ -48,4 +58,12 @@ function js_theme() {
       'template' => 'js',
     )
   );
+}
+
+/**
+ * Implements hook_disable().
+ */
+function js_disable() {
+  // Remind of necessary .htaccess changes.
+  drupal_set_message(t('Please remember to remove the changes in your .htaccess file!'), 'warning');
 }
