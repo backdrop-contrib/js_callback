@@ -49,18 +49,6 @@ function js_permission() {
 }
 
 /**
- * Implements hook_theme().
- */
-function js_theme() {
-  return array(
-    'js_callback_handler' => array(
-      'variables' => array('options' => NULL),
-      'template' => 'js',
-    )
-  );
-}
-
-/**
  * Implements hook_disable().
  */
 function js_disable() {
