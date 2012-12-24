@@ -246,7 +246,7 @@ For example 1 and 2, this could look like:
         'callback' => 'easypicture_rename',
         'bootstrap' => DRUPAL_BOOTSTRAP_SESSION,
         'includes' => array('path'),
-        'dependencies' => array('node'),
+        'dependencies' => array('node', 'user'),
       ),
     );
   }
