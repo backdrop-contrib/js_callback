@@ -54,6 +54,7 @@ function js_requirements($phase) {
  * Implements hook_uninstall().
  */
 function js_uninstall() {
+  global $base_path;
   // Delete used variables.
   foreach (array(
     'js_callback_handler_complex_path',
@@ -63,5 +64,21 @@ function js_uninstall() {
     'js_autogenerate_hash'
   ) as $varname) {
     variable_del($varname);
+  }
+  // Delete auto-generated js.php from Drupal root.
+  $hash_last = variable_get('js_autogenerate_hash', '');
+  $filename = $_SERVER['DOCUMENT_ROOT'] . $base_path . 'js.php';
+  if ($hash_last != '' && file_exists($file)) {
+    $hash_current = md5(file_get_contents($file));
+    if ($hash_current == $hash_last) {
+      if (unlink($filename)) {
+        drupal_set_message(t('Successfully removed js.php from your Drupal root directory.'));
+      }
+      else {
+        drupal_set_message(t('Could not remove %filename from your Drupal root directory. Please remove it manually.', array(
+          '%filename' => $filename,
+        )));
+      }
+    }
   }
 }
