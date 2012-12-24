@@ -190,6 +190,10 @@ function js_execute_callback() {
 <?php if($options['page_arguments'] == TRUE): ?>
   // If there are page arguments defined add them to the callback call.
   if(isset($valid_callbacks[$callback]['page arguments'])) {
+    // Get the original args again and strip first arguments 'js' and 'module'.
+    $args = array_slice(explode('/', $_GET['q']), 2);
+
+    // Overwrite the arguments
     $args = array_intersect_key($args, array_flip($valid_callbacks[$callback]['page arguments']));
   }
 <?php endif; ?>
