@@ -110,13 +110,9 @@ function js_execute_callback() {
   
   // Further extensions.
   if ($extended) {
-    // Determine the module specific extension configuration.
-    $extensions = array_flip($valid_callbacks[$callback]['extensions']);
-    if (isset($extensions['other file'])) {
-      // If the callback function is located in another file, load that file now.
-      if (isset($valid_callbacks[$callback]['file']) && ($filepath = drupal_get_path('module', $module) . '/' . $valid_callbacks[$callback]['file']) && file_exists($filepath)) {
-      require_once $filepath;
-    }
+    // If the callback function is located in another file, load that file now.
+    if (isset($valid_callbacks[$callback]['file']) && ($filepath = drupal_get_path('module', $module) . '/' . $valid_callbacks[$callback]['file']) && file_exists($filepath)) {
+    require_once $filepath;
   }
 
   // Validate the existance of the defined callback.
@@ -171,7 +167,7 @@ function js_execute_callback() {
     module_list(FALSE, TRUE, FALSE, $modules);
 
     // Optionally perform access checks.
-    if ($extended && isset($extensions['access validation'])) {
+    if ($extended) {
       // If access arguments are passed, boot to SESSION and validate if the user
       // has access to this callback.
       if(!empty($valid_callbacks[$callback]['access arguments']) || !empty($valid_callbacks[$callback]['access callback'])) {
@@ -197,12 +193,13 @@ function js_execute_callback() {
     module_invoke_all('init');
   }
 
-  if ($extended && isset($extensions['page arguments'])) {
+  if ($extended) {
     // If there are page arguments defined add them to the callback call.
     if(isset($valid_callbacks[$callback]['page arguments'])) {
       // Re-add the previously removed first argument and
       // build the page arguments array.
-      $args = array_intersect_key(array_unshift($args, $first_arg), array_flip($valid_callbacks[$callback]['page arguments']));
+      array_unshift($args, $first_arg);
+      $args = array_intersect_key($args, array_flip($valid_callbacks[$callback]['page arguments']));
     }
    }
 
