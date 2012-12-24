@@ -1,4 +1,4 @@
-<?php print '<?php'; ?>
+<?php
 
 /**
  * @file
@@ -31,9 +31,6 @@ require_once DRUPAL_ROOT . '/includes/common.inc';
 require_once DRUPAL_ROOT . '/includes/module.inc';
 require_once DRUPAL_ROOT . '/includes/unicode.inc';
 require_once DRUPAL_ROOT . '/includes/file.inc';
-<?php if($options['complex_path'] == TRUE): ?>
-require_once DRUPAL_ROOT . '/includes/menu.inc';
-<?php endif; ?>
 /**
  * @} End of "Required core files".
  */
@@ -69,8 +66,9 @@ elseif (isset($return)) {
 function js_execute_callback() {
   $args = explode('/', $_GET['q']);
 
-  // Strip first argument 'js'.
-  array_shift($args);
+  // Evaluate first argument to determine the callback lookup method
+  // and decide between the standard and the extended callback system.
+  $extended = array_shift($args) == 'jsx';
 
   // Determine module to load.
   $module = check_plain(array_shift($args));
@@ -87,33 +85,41 @@ function js_execute_callback() {
   // Get valid callbacks.
   $valid_callbacks = $function();
 
-  // Get the callback
-<?php if($options['complex_path'] == TRUE): ?>
-  $ancestors = menu_get_ancestors($args);
-  foreach($ancestors AS $path) {
-    if(isset($valid_callbacks[$path])) {
-      $callback = $path;
-      break;
+  // Determine the actual callback.
+  if ($extended) {
+    require_once DRUPAL_ROOT . '/includes/menu.inc';
+    // Analyze the callback extension configuration.
+    $ancestors = menu_get_ancestors($args);
+    foreach($ancestors AS $path) {
+      if(isset($valid_callbacks[$path])) {
+        $callback = $path;
+        break;
+      }
     }
+    // Strip the first argument but remember it.
+    $first_arg = array_shift($args);
   }
-  array_shift($args);
-<?php else: ?>
-  $callback = check_plain(array_shift($args));
-<?php endif; ?>
+  else {
+    $callback = check_plain(array_shift($args));
+  }
 
-  //Validate the callback
+  // Validate the callback.
   if (!isset($valid_callbacks[$callback])) {
     return JS_MENU_NOT_FOUND;
   }
-
-<?php if($options['other_file'] == TRUE): ?>
-  // If the callback function is located in another file, load that file now.
-  if (isset($valid_callbacks[$callback]['file']) && ($filepath = drupal_get_path('module', $module) . '/' . $valid_callbacks[$callback]['file']) && file_exists($filepath)) {
-    require_once $filepath;
+  
+  // Further extensions.
+  if ($extended) {
+    // Determine the module specific extension configuration.
+    $extensions = array_flip($valid_callbacks[$callback]['extensions']);
+    if (isset($extensions['other file'])) {
+      // If the callback function is located in another file, load that file now.
+      if (isset($valid_callbacks[$callback]['file']) && ($filepath = drupal_get_path('module', $module) . '/' . $valid_callbacks[$callback]['file']) && file_exists($filepath)) {
+      require_once $filepath;
+    }
   }
-<?php endif; ?>
 
-  // Validate the existance of the defined callback
+  // Validate the existance of the defined callback.
   if (!function_exists($valid_callbacks[$callback]['callback'])) {
     return JS_MENU_NOT_FOUND;
   }
@@ -130,7 +136,7 @@ function js_execute_callback() {
     // The difference is that not all modules and includes are loaded
     // @see _drupal_bootstrap_full()
 
-    // Path.inc will be needed for init.
+    // Path.inc will be needed for init of some modules.
     $load_includes = array('path');
     // Determine additional include files based on the callback.
     if (isset($valid_callbacks[$callback]['includes']) && is_array($valid_callbacks[$callback]['includes'])) {
@@ -164,42 +170,41 @@ function js_execute_callback() {
     // Reset module list.
     module_list(FALSE, TRUE, FALSE, $modules);
 
-<?php if($options['access_validation'] == TRUE): ?>
-    // If access arguments are passed, boot to SESSION and validate if the user
-    // has access to this callback
-    if(!empty($valid_callbacks[$callback]['access arguments']) || !empty($valid_callbacks[$callback]['access callback'])) {
-      drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
+    // Optionally perform access checks.
+    if ($extended && isset($extensions['access validation'])) {
+      // If access arguments are passed, boot to SESSION and validate if the user
+      // has access to this callback.
+      if(!empty($valid_callbacks[$callback]['access arguments']) || !empty($valid_callbacks[$callback]['access callback'])) {
+        drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
 
-      // If no callback is provided, default to user_access
-      if (!isset($valid_callbacks[$callback]['access callback'])) {
-        $valid_callbacks[$callback]['access callback'] = 'user_access';
-      }
+        // If no callback is provided, default to user_access.
+        if (!isset($valid_callbacks[$callback]['access callback'])) {
+          $valid_callbacks[$callback]['access callback'] = 'user_access';
+        }
 
-      if($valid_callbacks[$callback]['access callback'] == 'user_access') {
-        // Ensure the user module is available
-        drupal_load('module', 'user');
-      }
+        if($valid_callbacks[$callback]['access callback'] == 'user_access') {
+          // Ensure the user module is available
+          drupal_load('module', 'user');
+        }
 
-      if(!call_user_func_array($valid_callbacks[$callback]['access callback'], !empty($valid_callbacks[$callback]['access arguments']) ? $valid_callbacks[$callback]['access arguments'] : array())) {
-        return JS_MENU_ACCESS_DENIED;
+        if(!call_user_func_array($valid_callbacks[$callback]['access callback'], !empty($valid_callbacks[$callback]['access arguments']) ? $valid_callbacks[$callback]['access arguments'] : array())) {
+          return JS_MENU_ACCESS_DENIED;
+        }
       }
     }
-<?php endif; ?>
 
     // Invoke implementations of hook_init().
     module_invoke_all('init');
   }
 
-<?php if($options['page_arguments'] == TRUE): ?>
-  // If there are page arguments defined add them to the callback call.
-  if(isset($valid_callbacks[$callback]['page arguments'])) {
-    // Get the original args again and strip first arguments 'js' and 'module'.
-    $args = array_slice(explode('/', $_GET['q']), 2);
-
-    // Overwrite the arguments
-    $args = array_intersect_key($args, array_flip($valid_callbacks[$callback]['page arguments']));
-  }
-<?php endif; ?>
+  if ($extended && isset($extensions['page arguments'])) {
+    // If there are page arguments defined add them to the callback call.
+    if(isset($valid_callbacks[$callback]['page arguments'])) {
+      // Re-add the previously removed first argument and
+      // build the page arguments array.
+      $args = array_intersect_key(array_unshift($args, $first_arg), array_flip($valid_callbacks[$callback]['page arguments']));
+    }
+   }
 
   // Invoke callback function.
   return call_user_func_array($valid_callbacks[$callback]['callback'], $args);
