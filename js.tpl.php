@@ -130,12 +130,15 @@ function js_execute_callback() {
     // The difference is that not all modules and includes are loaded
     // @see _drupal_bootstrap_full()
 
-    // Load required include files based on the callback
+    // Path.inc will be needed for init.
+    $load_includes = array('path');
+    // Determine additional include files based on the callback.
     if (isset($valid_callbacks[$callback]['includes']) && is_array($valid_callbacks[$callback]['includes'])) {
-      foreach ($valid_callbacks[$callback]['includes'] as $include) {
-        if (file_exists("./includes/$include.inc")) {
-          require_once "./includes/$include.inc";
-        }
+      $load_includes += $valid_callbacks[$callback]['includes'];
+    }
+    foreach ($load_includes as $include) {
+      if (file_exists("./includes/$include.inc")) {
+        require_once "./includes/$include.inc";
       }
     }
 
@@ -153,7 +156,7 @@ function js_execute_callback() {
     if (isset($valid_callbacks[$callback]['dependencies']) && is_array($valid_callbacks[$callback]['dependencies'])) {
       foreach ($valid_callbacks[$callback]['dependencies'] as $dependency) {
         if (!drupal_load('module', $dependency)) {
-          throw new Exception(t('Error, the dependancy (!module) for this callback is not installed.', array('!module' => $dependency)));
+          throw new Exception(t('Error, the dependency (!module) for this callback is not installed', array('!module' => $dependency)));
         }
         $modules[$dependency] = 0;
       }
