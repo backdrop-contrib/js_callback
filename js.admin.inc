@@ -31,35 +31,6 @@ function js_configure_form($form, &$form_state) {
     }
   }
 
-  $form['options'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Settings'),
-  );
-  $form['options']['js_callback_handler_complex_path'] = array(
-    '#type' => 'checkbox',
-    '#default_value' => variable_get('js_callback_handler_complex_path', FALSE),
-    '#title' => t('Enable complex path support'),
-    '#description' => t('Complex paths support enables the use of slashes (/) and a wildcard (%, no %function though) in your callback definition.'),
-  );
-  $form['options']['js_callback_handler_page_arguments'] = array(
-    '#type' => 'checkbox',
-    '#default_value' => variable_get('js_callback_handler_page_arguments', FALSE),
-    '#title' => t('Enable page arguments support'),
-    '#description' => t('Page arguments enables the support to defined which arguments are passed to the callback. If disabled all parts of the path that are left after the callback are passed as arguments to the callback.'),
-  );
-  $form['options']['js_callback_handler_access_validation'] = array(
-    '#type' => 'checkbox',
-    '#default_value' => variable_get('js_callback_handler_access_validation', FALSE),
-    '#title' => t('Enable user access validation support'),
-    '#description' => t('Adds a simple implementation of access arguments and access callback. Access arguments do not support wildcards (yet). NOTE: adding an access argument or callback will force bootstrapping to SESSION instead of only DATABASE.'),
-  );
-  $form['options']['js_callback_handler_other_file'] = array(
-    '#type' => 'checkbox',
-    '#default_value' => variable_get('js_callback_handler_other_file', FALSE),
-    '#title' => t('Enable file support'),
-    '#description' => t('Adds the ability to have a callback in another file, configured via the file option.')
-  );
-
   $form['dowload'] = array(
     '#type' => 'fieldset',
     '#title' => t('Download'),
@@ -100,7 +71,6 @@ function js_configure_form($form, &$form_state) {
       ),
     );
   }
-
   return system_settings_form($form);
 }
 
@@ -109,7 +79,7 @@ function js_configure_form($form, &$form_state) {
  */
 function js_download_handler() {
   // Get js.php contents
-  $file = js_generate_php_file();
+  $file = file_get_contents(dirname(__FILE__) . '/js.php');
 
   // Set download headers
   drupal_add_http_header('Content-type', 'text/plain');
@@ -132,7 +102,7 @@ function js_download_handler() {
 function js_generation_handler() {
   global $base_path;
   // Create the new file and a hash to compare file with probably existing versions.
-  $file_new = js_generate_php_file();
+  $file_new = file_get_contents(dirname(__FILE__) . '/js.php');
   $hash_new = md5($file_new);
   // Recall the hash of the file that was last auto-generated.
   $hash_last = variable_get('js_autogenerate_hash', '');
@@ -167,24 +137,4 @@ function js_generation_handler() {
     );
   }
   drupal_goto();
-}
-
-/**
- * Generate the pure php file.
- *
- * @return string
- *   The js.php content as defined by the theme template.
- *
- * @see js_download_handler()
- * @see js_generation_handler()
- */
-function js_generate_php_file() {
-  return theme('js_callback_handler', array(
-    'options' => array(
-      'complex_path' => variable_get('js_callback_handler_complex_path', FALSE),
-      'page_arguments' => variable_get('js_callback_handler_page_arguments', FALSE),
-      'access_validation' => variable_get('js_callback_handler_access_validation', FALSE),
-      'other_file' => variable_get('js_callback_handler_other_file', FALSE),
-    )
-  ));
 }
