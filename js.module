@@ -5,6 +5,649 @@
  */
 
 /**
+ * Constants copied from menu.inc in order to drop dependency on that file.
+ */
+define('JS_MENU_NOT_FOUND', 2);
+define('JS_MENU_ACCESS_DENIED', 3);
+
+/**
+ * Filters multidimensional array values against XSS vulnerabilities.
+ *
+ * @param array $array
+ *   The array to process.
+ *
+ * @return array
+ *   The filtered array.
+ */
+function js_array_filter_xss(array $array = array()) {
+  foreach ($array as $key => $value) {
+    // Iterate over multi-dimensional arrays.
+    if (is_array($value)) {
+      $array[$key] = js_array_filter_xss($value);
+    }
+    // Filter strings against XSS.
+    elseif (is_string($value)) {
+      $array[$key] = filter_xss_admin($value);
+    }
+  }
+  return $array;
+}
+
+/**
+ * Wrapper function for array_replace_recursive().
+ */
+function js_array_replace_recursive($array, $array1) {
+  // PHP 5.3+ has this function built in.
+  if (function_exists('array_replace_recursive')) {
+    return call_user_func_array('array_replace_recursive', func_get_args());
+  }
+  /**
+   * Internal recursion function.
+   */
+  function recurse($array, $array1) {
+    foreach ($array1 as $key => $value) {
+      // Create new key in $array, if it is empty or not an array.
+      if (!isset($array[$key]) || (isset($array[$key]) && !is_array($array[$key]))) {
+        $array[$key] = array();
+      }
+
+      // Overwrite the value in the base array.
+      if (is_array($value)) {
+        $value = recurse($array[$key], $value);
+      }
+      $array[$key] = $value;
+    }
+    return $array;
+  }
+  // Handle the arguments, merge one by one.
+  $args = func_get_args();
+  $array = $args[0];
+  if (!is_array($array)) {
+    return $array;
+  }
+  for ($i = 1; $i < count($args); $i++) {
+    if (is_array($args[$i])) {
+      $array = recurse($array, $args[$i]);
+    }
+  }
+  return $array;
+}
+
+/**
+ * Bootstraps Drupal to the correct level based on callback info.
+ *
+ * @param array $info
+ *   The callback info array, passed by reference.
+ *
+ * @throws Exception
+ * @see js_callback_info()
+ * @see _drupal_bootstrap_full()
+ */
+function js_bootstrap_callback(&$info) {
+  // If the callback function is located in another file, load that file.
+  $path = !empty($info['path']) ? $info['path'] : drupal_get_path('module', $info['module']);
+  if (isset($info['file']) && ($filepath = $path . '/' . $info['file']) && file_exists($filepath)) {
+    require_once $filepath;
+  }
+
+  // The following mimics the behavior of _drupal_bootstrap_full().
+  // The difference is that not all modules and includes are loaded.
+  if (drupal_bootstrap($info['bootstrap']) < DRUPAL_BOOTSTRAP_FULL) {
+    // If "access callback" isn't passed, but "access arguments" is,
+    // default to using "user_access" and bootstrap Drupal to at least
+    // DRUPAL_BOOTSTRAP_SESSION and ensure the user module has loaded.
+    if (empty($info['access callback']) && !empty($info['access arguments'])) {
+      drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
+      if (!in_array('user', $info['dependencies'])) {
+        $info['dependencies'][] = 'user';
+      }
+      $info['access callback'] = 'user_access';
+    }
+
+    // If i18n is enabled and site is multilingual, bootstrap at least to
+    // DRUPAL_BOOTSTRAP_LANGUAGE and ensure the required modules are enabled.
+    if ($info['i18n']) {
+      if (!in_array('user', $info['dependencies'])) {
+        $info['dependencies'][] = 'user';
+      }
+      if (!in_array('path', $info['includes'])) {
+        $info['includes'][] = 'path';
+      }
+      // Boot at least DRUPAL_BOOTSTRAP_VARIABLES to ensure
+      // drupal_multilingual() works.
+      drupal_bootstrap(DRUPAL_BOOTSTRAP_VARIABLES);
+      if (drupal_multilingual()) {
+        drupal_bootstrap(DRUPAL_BOOTSTRAP_LANGUAGE);
+      }
+    }
+
+    // Load required include files based on the callback.
+    if (isset($info['includes']) && is_array($info['includes'])) {
+      foreach ($info['includes'] as $include) {
+        if (file_exists("./includes/$include.inc")) {
+          require_once "./includes/$include.inc";
+        }
+      }
+    }
+
+    // Detect string handling method.
+    unicode_check();
+
+    // Undo magic quotes.
+    fix_gpc_magic();
+
+    // Create an associative array with weights as values.
+    $modules = array($info['module'] => 0);
+    foreach ($info['dependencies'] as $dependency) {
+      $modules[$dependency] = 0;
+    }
+
+    // Reset module list.
+    module_list(FALSE, TRUE, FALSE, $modules);
+
+    // Ensure all modules are loaded at this point. theme() checks the static
+    // $has_run variable in this function and will fatal if not set.
+    module_load_all();
+
+    // Make sure all stream wrappers are registered.
+    file_get_stream_wrappers();
+
+    // Ensure the language variable is set, if not it might cause problems
+    // (e.g. entity info).
+    global $language;
+    if (!isset($language)) {
+      $language = language_default();
+
+      $types = language_types();
+      foreach ($types as $type) {
+        $GLOBALS[$type] = $language;
+      }
+    }
+
+    // Invoke implementations of hook_init() if the callback doesn't indicate it
+    // should be skipped.
+    if (empty($info['skip_hook_init'])) {
+      module_invoke_all('init');
+    }
+  }
+}
+
+/**
+ * Helper function for converting strings into camelCase variants.
+ *
+ * @param string $string
+ *   The string to convert.
+ *
+ * @return string
+ *   The camelCased version of $string.
+ *
+ * @see http://www.mendoweb.be/blog/php-convert-string-to-camelcase-string/
+ */
+function js_camel_case($string) {
+  // Non-alpha and non-numeric characters become spaces.
+  $string = preg_replace('/[^a-z0-9]+/i', ' ', $string);
+  // Uppercase the first character of each word.
+  $string = ucwords(trim($string));
+  return lcfirst(str_replace(' ', '', $string));
+}
+
+/**
+ * Provide default values for a callback info array.
+ *
+ * @param array $values
+ *   An array of values to use instead of the defaults.
+ *
+ * @return array
+ *   The default values for a callback info array.
+ */
+function js_callback_defaults(array $values = array()) {
+  return js_array_replace_recursive(array(
+    'access arguments' => array(),
+    'access callback'  => FALSE,
+    'bootstrap' => DRUPAL_BOOTSTRAP_DATABASE,
+    'callback' => FALSE,
+    'callback arguments' => array(),
+    'delivery callback' => 'js_deliver_json',
+    'dependencies' => array(),
+    'i18n' => FALSE,
+    'includes' => array(),
+    'module' => FALSE,
+    'skip_hook_init' => FALSE,
+    'token' => TRUE,
+    'process post' => TRUE,
+  ), $values);
+}
+
+/**
+ * Retrieves the callback info array based on the current path.
+ *
+ * @return array
+ *   The current callback's info array.
+ */
+function js_callback_info() {
+  // Load the arguments.
+  $args = arg();
+
+  // Determine if there is a language prefix in the path.
+  $i18n = FALSE;
+  if (!empty($args[0]) && !empty($args[1]) && $args[1] === 'js') {
+    $i18n = TRUE;
+    array_shift($args);
+  }
+
+  // Remove the 'js' argument.
+  if (!empty($args[0]) && $args[0] === 'js') {
+    array_shift($args);
+  }
+
+  // Shift off the module name.
+  $module = FALSE;
+  if (!empty($args[0])) {
+    $module = check_plain(array_shift($args));
+  }
+
+  // Shift off the callback name.
+  $callback = FALSE;
+  if (!empty($args[0])) {
+    $callback = check_plain(array_shift($args));
+  }
+
+  // Set the defaults.
+  $info = js_callback_defaults(array(
+    'i18n' => $i18n,
+    'module' => $module,
+  ));
+
+  // Load the callback module.
+  if ($module && drupal_load('module', $module)) {
+    $function = $module . '_js_info';
+    if (function_exists($function)) {
+      $results = $function();
+
+      // Validate that the callback exists in the module's info hook.
+      if ($callback && !empty($results[$callback])) {
+        $info = js_array_replace_recursive($info, $results[$callback]);
+
+        // Shift off the token from the path if it's supposed to be used.
+        if ($info['token'] && !empty($args[0])) {
+          // Ensure we have bootstrapped to at least DRUPAL_BOOTSTRAP_SESSION
+          // so tokens can be properly validated.
+          drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
+          // Retrieve the token from the path, sanitized.
+          $info['token'] = check_plain(array_shift($args));
+        }
+
+        // Replace integer based arguments with corresponding value from path.
+        foreach (array('access', 'callback') as $type) {
+          foreach ($info["$type arguments"] as $key => $value) {
+            // Numeric argument exists, replace it.
+            if (is_int($value) && !empty($args[$value])) {
+              $info["$type arguments"][$key] = check_plain($args[$value]);
+            }
+            // Numeric argument does not exist, remove it.
+            elseif (is_int($value)) {
+              unset($info["$type arguments"][$key]);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Return the info array.
+  return $info;
+}
+
+/**
+ * Retrieve a callback's parameters from it's signature.
+ *
+ * This function helps determine the default values of each callbacks as well
+ * as their order so they parsed data can be arranged correctly.
+ *
+ * @param string $callback
+ *   (optional) The name of the callback function to invoke.
+ *
+ * @return array
+ *   Associated array with parameter names as keys and defaults as values.
+ */
+function js_callback_parameters($callback = NULL) {
+  // Just return an empty array if no callback specified.
+  if (empty($callback)) {
+    return array();
+  }
+  // Cache results.
+  $callbacks = &drupal_static(__FUNCTION__, array());
+  if (!isset($callbacks[$callback])) {
+    $callbacks[$callback] = array();
+    if (function_exists($callback)) {
+      $f = new ReflectionFunction($callback);
+      foreach ($f->getParameters() as $param) {
+        $default = NULL;
+        if ($param->isDefaultValueAvailable()) {
+          $default = $param->getDefaultValue();
+        }
+        $callbacks[$callback][$param->name] = $default;
+      }
+    }
+  }
+  return $callbacks[$callback];
+}
+
+/**
+ * Callback for delivering JS AJAX requests to the browser.
+ *
+ * @param mixed $callback_result
+ *   The result of a page callback. Can be one of:
+ *   - NULL: to indicate no content.
+ *   - int: An integer menu status constant: to indicate an error condition.
+ *   - Array: A Drupal render array. The rendered results will be placed
+ *     inside the "content" key of the JSON array. Example:
+ *
+ *       .success(function (json) {
+ *         var content = json.content;
+ *       });
+ *
+ *   - Array: An array of data to return.
+ * @param array $info
+ *   The callback info array.
+ *
+ * @see js_ajax.js
+ */
+function js_deliver_json($callback_result, $info) {
+  if ($callback_result === MENU_NOT_FOUND) {
+    js_http_response(404);
+  }
+  elseif ($callback_result === MENU_ACCESS_DENIED) {
+    js_http_response(403);
+  }
+  // Default to a "200 OK" response if no errors have occurred yet.
+  elseif (empty($json['response'])) {
+    js_http_response();
+  }
+
+  // Retrieve static JSON.
+  $json = &drupal_static(__FUNCTION__, array());
+
+  // Extend the static JSON array with callback result.
+  if (is_array($callback_result)) {
+    // If returned value is a renderable, render it and place the output inside
+    // the "content" key.
+    if (!empty($callback_result['#theme']) || !empty($callback_result['#type'])) {
+      // Render arrays require the theme include. Ensure it exists.
+      require_once './includes/theme.inc';
+      $json['content'] = drupal_render($callback_result);
+    }
+    else {
+      $json += $callback_result;
+    }
+  }
+
+  // Include any Drupal messages that have been created so they can be
+  // displayed to user.
+  $json['drupal']['messages'] = drupal_get_messages();
+
+  // Sanitize the JSON array to prevent XSS attacks.
+  $json = js_array_filter_xss($json);
+
+  // Convert the JSON array into a string.
+  $output = drupal_json_encode($json);
+
+  // Encode the stringed $output if the browser supports gzip compression.
+  if (strpos($_SERVER['HTTP_ACCEPT_ENCODING'], 'gzip') !== FALSE) {
+    $output = gzencode($output, 9);
+    drupal_add_http_header('Content-Encoding', 'gzip');
+    drupal_add_http_header('Vary', 'Accept-Encoding');
+  }
+
+  // Add necessary headers.
+  drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+  drupal_add_http_header('Content-Length', strlen($output));
+
+  // Print output.
+  print $output;
+
+  // Even for AJAX requests, invoke hook_exit() implementations. There may be
+  // modules that need very fast AJAX responses, and therefore, run AJAX
+  // requests with an early bootstrap.
+  if (drupal_get_bootstrap_phase() === DRUPAL_BOOTSTRAP_FULL && (!defined('MAINTENANCE_MODE') || MAINTENANCE_MODE != 'update')) {
+    module_invoke_all('exit');
+  }
+
+  // Commit the user session.
+  if (function_exists('drupal_session_commit')) {
+    drupal_session_commit();
+  }
+
+  // End execution.
+  exit;
+}
+
+/**
+ * Process POST data for callbacks.
+ *
+ * By default, all callbacks will have POST data processed automatically.
+ * It will match against the callback's parameters and default value variable
+ * types. These values are always appended to any integer path values already
+ * assigned in the arguments array.
+ *
+ * This allows callbacks to specify explicit path arguments or simply allow
+ * POST values to match against the callback's parameters (it will also
+ * automatically convert PHP parameter names to camelCase in an effor to match
+ * against JSON standards). Example:
+ *
+ *   $_POST['myPostVariable'] = 'foo';
+ *
+ *   function my_callback($myPostVariable) {
+ *     // Outputs: "foo".
+ *     print $myPostVariable;
+ *   }
+ *
+ *   // The parameter name is converted internally to match against the
+ *   // camelCase JSON key name in the POST data.
+ *   function my_callback($my_post_variable) {
+ *     // Outputs: "foo".
+ *     print $my_post_variable;
+ *   }
+ *
+ *   function my_callback($arbitraryParameterName) {
+ *     // Outputs: "Array".
+ *     // The callback's parameter name doesn't match the JSON key name in the
+ *     // POST data. See below why the output is an "Array".
+ *     print $arbitraryParameterName;
+ *   }
+ *
+ * Regardless if this advanced "mapping" functionality is used, you can always
+ * access the entire POST array. It is always appended as the last parameter
+ * passed to the callback. Any parameters that do match are excluded from this
+ * array. Example:
+ *
+ *   $_POST['myPostVariable'] = 'foo';
+ *
+ *   function my_callback($data) {
+ *     print $data['myPostVariable'];
+ *   }
+ *
+ * @param array $info
+ *   The callback info array, passed by reference.
+ *
+ * @return array
+ *   The parsed POST data.
+ */
+function js_process_post_data(&$info) {
+  // Iterate over the raw $_POST array.
+  $post_data = array();
+  $json_values = array('true', 'false', '1', '0', 'yes', 'no');
+  foreach ($_POST as $key => $value) {
+    // Convert possible JSON strings into arrays.
+    if (is_string($value) && ($json = drupal_json_decode($value))) {
+      $post_data[$key] = $json;
+    }
+    // Convert certain JSON values into booleans.
+    elseif (!is_int($value) && in_array($value, $json_values)) {
+      $post_data[$key] = (bool) $value;
+    }
+    else {
+      $post_data[$key] = $value;
+    }
+  }
+
+  // Retrieve the default parameters of the callback function.
+  foreach (array('access', 'callback') as $type) {
+    $data = $post_data;
+    // Match the callback parameter names (camelCased) against the names of
+    // keys in the $_POST data. Ensure the values have the correct type as well.
+    $parameters = js_callback_parameters($info[($type === 'callback' ? 'callback' : "$type callback")]);
+    foreach ($parameters as $name => $default_value) {
+      $key = $name;
+      // Detect if $_POST is using JSON camelCase key names.
+      if (empty($data[$key])) {
+        $key = js_camel_case($name);
+      }
+      // Check to see if the parameter exists.
+      if (isset($data[$key])) {
+        // Convert the type of variable in the post data to the same type as
+        // the default value.
+        if (!is_null($default_value)) {
+          settype($data[$key], gettype($default_value));
+        }
+        // Move the value of the POST data into the parameter array.
+        $parameters[$name] = $data[$key];
+        // Remove the POST data since it has been moved.
+        unset($data[$key]);
+      }
+    }
+
+    // Sort the remaining POST data based on key name.
+    ksort($data);
+
+    // Merge existing arguments, parameter defaults and any remaining POST data.
+    $info["$type arguments"] = array_merge($info["$type arguments"], $parameters, array($data));
+  }
+
+}
+
+/**
+ * Sets a HTTP response code for JS AJAX requests.
+ *
+ * @param int $code
+ *   (optional) The HTTP response code to use. Defaults to: 200 OK.
+ */
+function js_http_response($code = 200) {
+  static $codes = array(
+    100 => 'Continue',
+    101 => 'Switching Protocols',
+    200 => 'OK',
+    201 => 'Created',
+    202 => 'Accepted',
+    203 => 'Non-Authoritative Information',
+    204 => 'No Content',
+    205 => 'Reset Content',
+    206 => 'Partial Content',
+    300 => 'Multiple Choices',
+    301 => 'Moved Permanently',
+    302 => 'Found',
+    303 => 'See Other',
+    304 => 'Not Modified',
+    305 => 'Use Proxy',
+    307 => 'Temporary Redirect',
+    400 => 'Bad Request',
+    401 => 'Unauthorized',
+    402 => 'Payment Required',
+    403 => 'Forbidden',
+    404 => 'Not Found',
+    405 => 'Method Not Allowed',
+    406 => 'Not Acceptable',
+    407 => 'Proxy Authentication Required',
+    408 => 'Request Time-out',
+    409 => 'Conflict',
+    410 => 'Gone',
+    411 => 'Length Required',
+    412 => 'Precondition Failed',
+    413 => 'Request Entity Too Large',
+    414 => 'Request-URI Too Large',
+    415 => 'Unsupported Media Type',
+    416 => 'Requested Range Not Satisfiable',
+    417 => 'Expectation Failed',
+    500 => 'Internal Server Error',
+    501 => 'Not Implemented',
+    502 => 'Bad Gateway',
+    503 => 'Service Unavailable',
+    504 => 'Gateway Time-out',
+    505 => 'HTTP Version Not Supported',
+  );
+  if (!array_key_exists($code, $codes)) {
+    // If this occurs, it's a programming error. Immediately throw a fatal error
+    // so it can be quickly identified and fixed.
+    throw new Exception(t('Invalid HTTP response code: @code', array(
+      '@code' => $code,
+    )));
+  }
+  drupal_add_http_header('Status', $code . ' ' . $codes[$code]);
+  // Add the status code to the deliverable JSON array.
+  $json = &drupal_static('js_deliver_json', array());
+  $json['response'] = array(
+    'code' => $code,
+    'message' => $codes[$code],
+  );
+}
+
+/**
+ * Loads the requested module and executes the requested callback.
+ *
+ * @return mixed
+ *   The callback function's return value or one of the JS_* constants.
+ */
+function js_execute_callback() {
+  // Prevent Devel from hi-jacking the output.
+  $GLOBALS['devel_shutdown'] = FALSE;
+
+  // Retrieve the callback info array based on the current path.
+  $info = js_callback_info();
+
+  // Bootstrap the callback to the minimally required level (includes,
+  // dependencies, etc).
+  js_bootstrap_callback($info);
+
+  // Allow loaded modules to alter the info.
+  drupal_alter('js_info', $info);
+
+  // Process POST data and append/replace arguments if necessary.
+  if (!empty($info['process post'])) {
+    js_process_post_data($info);
+  }
+
+  // Check token validity (if enabled and one is present).
+  if (!empty($info['token']) && !drupal_valid_token($info['token'], 'js')) {
+    drupal_set_message(t('Cannot complete request. Invalid token detected. Refresh this page or try logging out and back in again.'), 'error', FALSE);
+    // Reset value of token so it fails access validation.
+    $info['token'] = TRUE;
+  }
+
+  // Check access.
+  if (
+    // If token is explicitly set as TRUE, then a token value should be present.
+    ($info['token'] === TRUE) ||
+    // Check valid access callback results (if provided).
+    (!empty($info['access callback']) && !call_user_func_array($info['access callback'], $info['access arguments']))
+  ) {
+    $callback_result = JS_MENU_ACCESS_DENIED;
+  }
+  // Check callback.
+  elseif (empty($info['callback']) || !function_exists($info['callback'])) {
+    $callback_result = JS_MENU_NOT_FOUND;
+  }
+  // All checks have passed, invoke the callback.
+  else {
+    $callback_result = call_user_func_array($info['callback'], $info['callback arguments']);
+  }
+
+  // Deliver the results. The delivery callback is responsible for setting the
+  // appropriate headers, handling the result returned from the callback and
+  // exiting the script properly.
+  call_user_func_array($info['delivery callback'], array($callback_result));
+}
+
+/**
  * Implements hook_menu().
  */
 function js_menu() {
@@ -18,6 +661,53 @@ function js_menu() {
     'file' => 'js.admin.inc',
     'type' => MENU_NORMAL_ITEM,
   );
+
+  // Automatically create fallback paths for modules that implement
+  // hook_js_info().
+  $hook = 'js_info';
+  foreach (module_implements($hook) as $module) {
+    $callbacks = module_invoke($module, $hook);
+    foreach ($callbacks as $callback => $info) {
+      $info = js_callback_defaults($info);
+
+      // Set access callback to "user_access" if just the arguments are set.
+      if (empty($info['access callback']) && !empty($info['access arguments'])) {
+        if (!in_array('user', $info['dependencies'])) {
+          $info['dependencies'][] = 'user';
+        }
+        $info['access callback'] = 'user_access';
+      }
+
+      // Determine the number of wildcards (%) to add to the path.
+      $path = array('js', $module, $callback);
+      if ($info['token']) {
+        $path[] = '%';
+      }
+      $path_count = count($path);
+      foreach (array('access', 'callback') as $type) {
+        foreach ($info["$type arguments"] as $key => $value) {
+          // Add additional wildcards for each argument.
+          $path[] = '%';
+
+          // Increase existing argument values to include the full path.
+          if (is_int($value)) {
+            $info["$type arguments"][$key] = $value + $path_count;
+          }
+        }
+      }
+      // Create the menu item.
+      $path = implode('/', $path);
+      $items[$path] = array(
+        'title' => "JS Fallback ($module:$callback)",
+        'page callback' => $info['callback'],
+        'page arguments' => $info['callback arguments'],
+        'access callback'  => !empty($info['access callback']) ? $info['access callback'] : TRUE,
+        'access arguments' => $info['access arguments'],
+        'delivery callback' => $info['delivery callback'],
+        'type' => MENU_CALLBACK,
+      );
+    }
+  }
   return $items;
 }
 
@@ -30,4 +720,24 @@ function js_permission() {
       'title' => t('Administer JavaScript callback handler settings'),
     ),
   );
+}
+
+/**
+ * Implements hook_preprocess_page().
+ *
+ * Provides the necessary JS.ajax function wrapper so modules can generate
+ * easier AJAX requests using this module.
+ */
+function js_preprocess_page() {
+  // Add the JS.ajax wrapper to the page so modules can wrap their
+  // requests.
+  drupal_add_js(drupal_get_path('module', 'js') . '/js.js', array(
+    'group' => JS_LIBRARY,
+  ));
+  // Add a unique token to the page to ensure valid JS AJAX requests.
+  drupal_add_js(array(
+    'js' => array(
+      'token' => drupal_get_token('js'),
+    ),
+  ), 'setting');
 }
