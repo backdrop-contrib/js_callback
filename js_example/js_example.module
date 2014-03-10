@@ -1,0 +1,84 @@
+<?php
+/**
+ * @file
+ * js_example.module
+ * Provides examples on how to use the JS module API.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function js_example_menu() {
+  $items['js-example'] = array(
+    'title' => 'JavaScript callback handler (example)',
+    'description' => 'Provides examples on how to use the JS module API.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('js_example_form'),
+    'access callback' => TRUE,
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_init().
+ */
+function js_example_init() {
+  drupal_set_message(t('You have the JS Example module enabled. Please make sure you disable it when you are done. View <a href="!url">example page</a>.', array(
+    '!url' => url('js-example'),
+  )), 'status', FALSE);
+}
+
+/**
+ * Implements hook_js_info().
+ */
+function js_example_js_info() {
+  $callbacks['post_callback_parameters'] = array(
+    'callback' => 'js_example_post_callback_parameters',
+  );
+  return $callbacks;
+}
+
+/**
+ * Menu callback for "js-example".
+ */
+function js_example_form($form, $form_state) {
+  $form['#attached']['js'][] = drupal_get_path('module', 'js_example') . '/js_example.js';
+  $form['intro'] = array(
+    '#markup' => t('<p>This example page will show you examples on how each of these callbacks work using the JS module API.</p>'),
+  );
+  $form['post_callback_parameters'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('POST data as callback parameters'),
+    '#description' => t(''),
+    'first_name' => array(
+      '#type' => 'textfield',
+      '#title' => t('Enter your first name:'),
+    ),
+    'code' => array(
+      '#theme' => 'html_tag',
+      '#tag' => 'code',
+      '#value' => '',
+    ),
+    'actions' => array(
+      '#type' => 'actions',
+      'submit' => array(
+        '#type' => 'submit',
+        '#value' => t('Send'),
+      ),
+    ),
+  );
+  return $form;
+}
+
+function js_example_post_callback_parameters($first_name = '') {
+  $json = array();
+  if (!empty($first_name)) {
+    $json['content'] = 'Well hello there ' . $first_name . '!';
+  }
+  else {
+    drupal_set_message(t('You must enter your first name.'), 'error');
+    js_http_response(400);
+  }
+  return $json;
+}

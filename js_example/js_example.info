@@ -1,0 +1,5 @@
+name = JavaScript callback handler (example)
+description = Provides examples on how to use the JS module API.
+package = Performance
+core = 7.x
+dependencies[] = js
