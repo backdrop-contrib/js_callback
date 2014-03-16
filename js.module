@@ -93,15 +93,20 @@ function js_bootstrap_callback(&$info) {
   // The following mimics the behavior of _drupal_bootstrap_full().
   // The difference is that not all modules and includes are loaded.
   if (drupal_bootstrap($info['bootstrap']) < DRUPAL_BOOTSTRAP_FULL) {
-    // If "access callback" isn't passed, but "access arguments" is,
-    // default to using "user_access" and bootstrap Drupal to at least
-    // DRUPAL_BOOTSTRAP_SESSION and ensure the user module has loaded.
-    if (empty($info['access callback']) && !empty($info['access arguments'])) {
+    // Boot to session if access validation via user_access is required or token
+    // is enabled.
+    if ((empty($info['access callback']) && !empty($info['access arguments'])) || $info['token'] == TRUE) {
       drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
-      if (!in_array('user', $info['dependencies'])) {
-        $info['dependencies'][] = 'user';
+      
+      // If "access callback" isn't passed, but "access arguments" is,
+      // default to using "user_access" and bootstrap Drupal to at least
+      // DRUPAL_BOOTSTRAP_SESSION and ensure the user module has loaded.
+      if (empty($info['access callback']) && !empty($info['access arguments'])) {
+        if (!in_array('user', $info['dependencies'])) {
+          $info['dependencies'][] = 'user';
+        }
+        $info['access callback'] = 'user_access';
       }
-      $info['access callback'] = 'user_access';
     }
 
     // If i18n is enabled and site is multilingual, bootstrap at least to
@@ -144,10 +149,6 @@ function js_bootstrap_callback(&$info) {
 
     // Reset module list.
     module_list(FALSE, TRUE, FALSE, $modules);
-
-    // Ensure all modules are loaded at this point. theme() checks the static
-    // $has_run variable in this function and will fatal if not set.
-    module_load_all();
 
     // Make sure all stream wrappers are registered.
     file_get_stream_wrappers();
@@ -200,8 +201,8 @@ function js_camel_case($string) {
  * @return array
  *   The default values for a callback info array.
  */
-function js_callback_defaults(array $values = array()) {
-  return js_array_replace_recursive(array(
+function js_callback_defaults() {
+  return array(
     'access arguments' => array(),
     'access callback'  => FALSE,
     'bootstrap' => DRUPAL_BOOTSTRAP_DATABASE,
@@ -215,7 +216,7 @@ function js_callback_defaults(array $values = array()) {
     'skip_hook_init' => FALSE,
     'token' => TRUE,
     'process post' => TRUE,
-  ), $values);
+  );
 }
 
 /**
@@ -229,9 +230,7 @@ function js_callback_info() {
   $args = arg();
 
   // Determine if there is a language prefix in the path.
-  $i18n = FALSE;
   if (!empty($args[0]) && !empty($args[1]) && $args[1] === 'js') {
-    $i18n = TRUE;
     array_shift($args);
   }
 
@@ -252,49 +251,89 @@ function js_callback_info() {
     $callback = check_plain(array_shift($args));
   }
 
-  // Set the defaults.
-  $info = js_callback_defaults(array(
-    'i18n' => $i18n,
-    'module' => $module,
-  ));
+  // Get all the registered callbacks.
+  $registered_callbacks = js_get_callback_info();
 
-  // Load the callback module.
-  if ($module && drupal_load('module', $module)) {
-    $function = $module . '_js_info';
-    if (function_exists($function)) {
-      $results = $function();
+  // If the module and callback are recognized, process it for return.
+  if (isset($registered_callbacks[$module . '/' . $callback])) {
+    $info = $registered_callbacks[$module . '/' . $callback];
 
-      // Validate that the callback exists in the module's info hook.
-      if ($callback && !empty($results[$callback])) {
-        $info = js_array_replace_recursive($info, $results[$callback]);
+    // Shift off the token from the path if it's supposed to be used.
+    if ($info['token'] && !empty($args[0])) {
+      // Retrieve the token from the path, sanitized.
+      $info['token'] = check_plain(array_shift($args));
+    }
 
-        // Shift off the token from the path if it's supposed to be used.
-        if ($info['token'] && !empty($args[0])) {
-          // Ensure we have bootstrapped to at least DRUPAL_BOOTSTRAP_SESSION
-          // so tokens can be properly validated.
-          drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
-          // Retrieve the token from the path, sanitized.
-          $info['token'] = check_plain(array_shift($args));
+    // Replace integer based arguments with corresponding value from path.
+    foreach (array('access', 'callback') as $type) {
+      foreach ($info["$type arguments"] as $key => $value) {
+        // Numeric argument exists, replace it.
+        if (is_int($value) && !empty($args[$value])) {
+          $info["$type arguments"][$key] = check_plain($args[$value]);
         }
-
-        // Replace integer based arguments with corresponding value from path.
-        foreach (array('access', 'callback') as $type) {
-          foreach ($info["$type arguments"] as $key => $value) {
-            // Numeric argument exists, replace it.
-            if (is_int($value) && !empty($args[$value])) {
-              $info["$type arguments"][$key] = check_plain($args[$value]);
-            }
-            // Numeric argument does not exist, remove it.
-            elseif (is_int($value)) {
-              unset($info["$type arguments"][$key]);
-            }
-          }
+        // Numeric argument does not exist, remove it.
+        elseif (is_int($value)) {
+          unset($info["$type arguments"][$key]);
         }
       }
     }
   }
 
   // Return the info array.
+  return $info;
+}
+
+/**
+ * Get the callback information from the database and if it's not available,
+ * rebuild the cache.
+ * 
+ * @return array
+ *  The callback information.
+ */
+function js_get_callback_info() {
+  $info =& drupal_static(__FUNCTION__, array());
+  
+  if (empty($info)) {
+    $cache = cache_get('js-callback-info');
+    if (empty($cache->data)) {
+      // Ensure all modules are loaded at this point.
+      drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+
+      // Set the defaults.
+      $defaults = js_callback_defaults();
+      
+      // Detect if i18n should be enabled by default.
+      $default['i18n'] = drupal_multilingual();
+
+      // Build the $info array to contain all callbacks, prefixed with the 
+      // module.
+      foreach (module_implements('js_info') as $module) {
+        // Set the module for each callback from this module.
+        $default['module'] = $module;
+
+        // Get all callbacks for the module.
+        $module_info = module_invoke($module, 'js_info');
+
+        // Add them with defaults to the $info array.
+        foreach ($module_info as $path => $callback) {
+          $info[$module . '/' . $path] = js_array_replace_recursive($defaults, $callback);
+        }
+      }
+
+      // Give modules a change to alter the js callbacks.
+      drupal_alter('js_info', $info);
+
+      // Update the cache.
+      cache_set('js-callback-info', $info);
+
+      // Return the information.
+      return $info;
+    }
+    else {
+      $info = $cache->data;
+    }
+  }
+  
   return $info;
 }
 
@@ -608,9 +647,6 @@ function js_execute_callback() {
   // dependencies, etc).
   js_bootstrap_callback($info);
 
-  // Allow loaded modules to alter the info.
-  drupal_alter('js_info', $info);
-
   // Process POST data and append/replace arguments if necessary.
   if (!empty($info['process post'])) {
     js_process_post_data($info);
@@ -668,8 +704,6 @@ function js_menu() {
   foreach (module_implements($hook) as $module) {
     $callbacks = module_invoke($module, $hook);
     foreach ($callbacks as $callback => $info) {
-      $info = js_callback_defaults($info);
-
       // Set access callback to "user_access" if just the arguments are set.
       if (empty($info['access callback']) && !empty($info['access arguments'])) {
         if (!in_array('user', $info['dependencies'])) {
@@ -721,6 +755,7 @@ function js_permission() {
     ),
   );
 }
+
 
 /**
  * Implements hook_preprocess_page().

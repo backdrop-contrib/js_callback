@@ -35,6 +35,7 @@ function js_example_init() {
 function js_example_js_info() {
   $callbacks['post_callback_parameters'] = array(
     'callback' => 'js_example_post_callback_parameters',
+    'includes' => array('path'),
   );
   return $callbacks;
 }
