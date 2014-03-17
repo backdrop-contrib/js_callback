@@ -1,10 +1,10 @@
 <?php
 /**
  * @file
+ * js.api.php
  *
- * This file contains no working PHP code; it exists to provide additional
- * documentation for doxygen as well as to document hooks in the standard Drupal 
- * manner.
+ * This file contains no working PHP code; it exists to provide documentation
+ * for this module's API.
  */
 
 /**
@@ -14,8 +14,8 @@
  *   An associative array of callbacks where the key indicates name of the path
  *   callback that the info should be loaded. The value of each path callback
  *   is also an associative array containing the following possible keys:
- *   - callback: (required) The function to call to display the results when an
- *     ajax call occurs on this path.
+ *   - callback function: (optional) The function to invoke for this callback.
+ *     If omitted, the default function name is: MODULE_js_callback_CALLBACK.
  *   - callback arguments: (optional) Select which arguments from the URL to
  *     pass to the callback. Starting with 0 with the js/[module] stripped from
  *     the path. Please note that 0 will contain the used callback.
@@ -39,34 +39,49 @@
  *   - dependencies: (optional) Load additional modules for this callback.
  *   - file: (optional) The file where the callback function is defined.
  *   - path: (optional) The path where the callback function is defined.
- *   - skip_hook_init: (optional) Set to TRUE to skip the init hooks. Warning:
+ *   - lang: (optional) Boolean to forcefully enable or disable multilingual
+ *     support. JS auto-detects the language string in request paths. Set
+ *     this option to TRUE to enable translations, if you're not getting the
+ *     desired results.
+ *   - methods: (optional) The request methods allowed. This must be an array
+ *     of string values. If the request does not match any of the allowed
+ *     methods defined by the callback, it will be rejected.
+ *   - process request: (optional) Process $_REQUEST data and provide them as
+ *     matched arguments against the callback's parameter names (or as a single
+ *     $data parameter). Defaults to TRUE. If unsure what this does, it's best
+ *     to just leave this enabled. See js_process_post_data() for more
+ *     information.
+ *   - skip init: (optional) Set to TRUE to skip the init hooks. Warning:
  *     This might cause unwanted behavior and should only be disabled with care.
- *   - i18n: (optional) Boolean to enable or forcefully disable i18n. JS auto-
- *     detects the language string in the path but not in any other form. Set
- *     this option to TRUE to enable translations.
- *   - process post: (optional) Process $_POST data and provide them as matched
- *     arguments against the callback's parameter names (or as a single $data
- *     parameter). Defaults to TRUE. If unsure what this does, it's best to
- *     just leave this enabled. See js_process_post_data() for more information.
  *   - token: (optional) Use tokens to prevent CSRF attacks. When enabled, the
  *     minimum bootstrap level must be DRUPAL_BOOTSTRAP_SESSION to ensure
- *     proper token validation against the current user. It is strongly
+ *     proper token validation against the authenticated user. It is strongly
  *     recommended that this is not disabled, otherwise your site will be
  *     susceptible to CSRF attacks and be considered "insecure".
+ *   - xss: (optional) Filters data in drupal_deliver_json() before it's sent to
+ *     browser. It is strongly recommended that this is not disabled, otherwise
+ *     your site will be susceptible to XSS attacks and be considered
+ *     "insecure".
  */
-function hook_js() {
-  return array(
-    'path_callback' => array(
-      'callback' => '',
-      'callback arguments' => array(),
-      'access callback'  => '',
-      'access arguments' => array(),
-      'delivery callback' => 'js_deliver_json',
-      'bootstrap' => DRUPAL_BOOTSTRAP_DATABASE,
-      'includes' => array(),
-      'dependencies' => array(),
-      //'skip_hook_init' => TRUE,
-      //'i18n' => TRUE,
-    ),
+function hook_js_info() {
+  // Simple callback definition:
+  $callbacks['simple'] = array();
+
+  // Example of a more complex definition:
+  $callbacks['complex'] = array(
+    'access callback'  => 'my_module_custom_access_check',
+    'access arguments' => array(1, 2),
+    'bootstrap' => DRUPAL_BOOTSTRAP_SESSION,
+    'callback function' => 'my_module_custom_callback_function',
+    'callback arguments' => array(1, 2),
+    'delivery callback' => 'my_module_custom_delivery_callback',
+    'includes' => array('path', 'authorize', 'form'),
+    'dependencies' => array('system', 'views'),
+    'lang' => TRUE,
+    'method' => array('PUT'),
+    'skip init' => TRUE,
+    'process request' => FALSE,
+    'token' => FALSE,
   );
+  return $callbacks;
 }

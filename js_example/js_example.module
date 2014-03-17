@@ -17,6 +17,28 @@ function js_example_menu() {
     'access callback' => TRUE,
     'type' => MENU_NORMAL_ITEM,
   );
+  $items['js-access-denied'] = array(
+    'title' => 'JavaScript callback handler (example)',
+    'access callback' => FALSE,
+    'type' => MENU_CALLBACK,
+  );
+  $items['js-redirect'] = array(
+    'title' => 'JavaScript callback handler (redirect example)',
+    'description' => 'Provides examples on how to use the JS module API.',
+    'page callback' => 'drupal_goto',
+    'page arguments' => array('js-redirect-result'),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  $items['js-redirect-result'] = array(
+    'title' => 'JavaScript callback handler (redirect example)',
+    'description' => 'Provides examples on how to use the JS module API.',
+    'page callback' => 'js_example_redirect_result',
+    'page arguments' => array(),
+    'access callback' => TRUE,
+    'type' => MENU_NORMAL_ITEM,
+  );
+
   return $items;
 }
 
@@ -24,19 +46,19 @@ function js_example_menu() {
  * Implements hook_init().
  */
 function js_example_init() {
-  drupal_set_message(t('You have the JS Example module enabled. Please make sure you disable it when you are done. View <a href="!url">example page</a>.', array(
-    '!url' => url('js-example'),
-  )), 'status', FALSE);
+  global $_js;
+  if (!$_js) {
+    drupal_set_message(t('You have the JS Example module enabled. Please make sure you disable it when you are done. View <a href="!url">example page</a>.', array(
+      '!url' => url('js-example'),
+    )), 'status', FALSE);
+  }
 }
 
 /**
  * Implements hook_js_info().
  */
 function js_example_js_info() {
-  $callbacks['post_callback_parameters'] = array(
-    'callback' => 'js_example_post_callback_parameters',
-    'includes' => array('path'),
-  );
+  $callbacks['using_js_callback'] = array();
   return $callbacks;
 }
 
@@ -48,38 +70,86 @@ function js_example_form($form, $form_state) {
   $form['intro'] = array(
     '#markup' => t('<p>This example page will show you examples on how each of these callbacks work using the JS module API.</p>'),
   );
-  $form['post_callback_parameters'] = array(
+
+  $submit = array(
+    '#type' => 'submit',
+    '#value' => t('Send'),
+    '#js_callback' => array('js_example' => 'using_js_callback'),
+  );
+  $submit_code = $submit;
+  $description = t('Use <code>#js_callback</code> in elements to automatically generate the necessary data attributes. It takes an associative array where the key is the module name and the value is the callback.');
+  $description .= '<pre><code>' . htmlentities(var_export($submit_code, TRUE)) . '</code></pre>';
+  $description .= '<pre><code>' . htmlentities(render($submit_code)) . '</code></pre>';
+  $form['using_js_callback'] = array(
     '#type' => 'fieldset',
-    '#title' => t('POST data as callback parameters'),
-    '#description' => t(''),
+    '#title' => t('Using #js_callback and $.jsCallback()'),
+    '#description' => $description,
     'first_name' => array(
       '#type' => 'textfield',
       '#title' => t('Enter your first name:'),
     ),
-    'code' => array(
-      '#theme' => 'html_tag',
-      '#tag' => 'code',
-      '#value' => '',
-    ),
     'actions' => array(
       '#type' => 'actions',
-      'submit' => array(
-        '#type' => 'submit',
-        '#value' => t('Send'),
+      'submit' => $submit,
+    ),
+    'results' => array(
+      '#type' => 'fieldset',
+      '#title' => t('Results'),
+      '#attributes' => array(
+        'class' => array('results'),
       ),
+      '#value' => '<pre><code></code></pre>',
+      // Needs high weight so it appears after actions.
+      '#weight' => 1000,
+    ),
+  );
+
+  $items = array();
+  $items[] = l(t('Access Denied'), 'js-access-denied');
+  $items[] = l(t('Redirect'), 'js-redirect');
+  $form['using_js_get'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Using $.jsGet()'),
+    '#description' => t('Click the links below to see the results.'),
+    'links' => array(
+      '#theme' => 'item_list',
+      '#items' => $items,
+    ),
+    'results' => array(
+      '#type' => 'fieldset',
+      '#title' => t('Results'),
+      '#attributes' => array(
+        'class' => array('results'),
+      ),
+      '#value' => '<pre><code></code></pre>',
     ),
   );
   return $form;
 }
 
-function js_example_post_callback_parameters($first_name = '') {
+/**
+ * Implements MODULE_js_callback_CALLBACK().
+ */
+function js_example_js_callback_using_js_callback($first_name = '') {
   $json = array();
   if (!empty($first_name)) {
-    $json['content'] = 'Well hello there ' . $first_name . '!';
+    $content = '<p>Request time: ' . REQUEST_TIME . '</p>';
+    $content .= '<p>Hi ' . $first_name . '!</p>';
+    $json['content'] = $content;
   }
   else {
     drupal_set_message(t('You must enter your first name.'), 'error');
-    js_http_response(400);
+    $json = js_http_response(400);
   }
   return $json;
+}
+
+function js_example_redirect_result() {
+  $build = array(
+    '#markup' => t('You are viewing content from "!current", but were redirected. Hover over the redirect link to view the URL, open it in a new tab/window or view the AJAX requests in your JS console!', array(
+      '!referrer' => $_SERVER['HTTP_REFERER'],
+      '!current' => url(current_path()),
+    )),
+  );
+  return $build;
 }

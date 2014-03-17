@@ -22,6 +22,6 @@ require_once DRUPAL_ROOT . '/includes/file.inc';
 // Bootstrap Drupal to at least the database level so it can be accessed.
 drupal_bootstrap(DRUPAL_BOOTSTRAP_DATABASE);
 
-// Load the JS module and execute callback.
+// Load the JS module and execute request.
 drupal_load('module', 'js');
-js_execute_callback();
+js_execute_request();
