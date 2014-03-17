@@ -247,8 +247,10 @@ var JS = JS || {};
    * @param {jqXHR} jqXHR
    */
   JS.processJSON = function (jqXHR) {
-    if (this.dataType === 'json' && jqXHR.responseJSON) {
-      var json = jqXHR.responseJSON || {};
+    // Older versions of jQuery do not have jqXHR.responseJSON, we must parse
+    // it manually.
+    if (this.dataType === 'json' && jqXHR.responseText) {
+      var json = $.parseJSON(jqXHR.responseText) || {};
 
       // Response was redirected, pass this response onto the redirect handler.
       if (json.response && json.response.code && json.response.url && $.inArray(json.response.code, [301, 302, 303, 307]) !== -1) {
