@@ -164,6 +164,21 @@ function js_execute_request() {
     $method = $_SERVER['REQUEST_METHOD'];
   }
 
+  // Extract any parameters matching the unique "js_" prefixed names from the
+  // referenced global request data and then unset it so it is not processed
+  // again.
+  $_js['module'] = FALSE;
+  $_js['callback'] = FALSE;
+  $_js['token'] = FALSE;
+  $_js['theme'] = FALSE;
+  $global_method = '_' . strtoupper($method);
+  foreach ($_js as $key => $value) {
+    if (isset($GLOBALS[$global_method]["js_$key"])) {
+      $_js[$key] = check_plain($GLOBALS[$global_method]["js_$key"]);
+      unset($GLOBALS[$global_method]["js_$key"]);
+    }
+  }
+
   // Prevent Devel from hi-jacking the output.
   $GLOBALS['devel_shutdown'] = FALSE;
 
@@ -181,9 +196,6 @@ function js_execute_request() {
     array_shift($_js['args']);
   }
 
-  // Retrieve the current theme provided by the request.
-  $_js['theme'] = !empty($_REQUEST['jsTheme']) ? check_plain($_REQUEST['jsTheme']) : FALSE;
-
   // Load common functions used for all requests.
   module_load_include('inc', 'js', 'includes/common');
 
@@ -191,32 +203,15 @@ function js_execute_request() {
   // of changing the results falls to the request handler.
   $request_result = JS_MENU_NOT_FOUND;
 
-  // GET requests are identical to a user manually entering the path in their
-  // browser address bar. Because Drupal will eventually be fully bootstrapped
-  // and all modules invoked, it is not necessary to processes the result.
-  if ($method === 'GET') {
+  // If a request does not provide a module or callback, we cannot retrieve a
+  // valid callback info to validate against. Treat this request as a normal
+  // GET request in the browser, but only return the contents of the page. This
+  // is useful for certain tasks like populating modal content.
+  if (!$_js['module'] || !$_js['callback']) {
     module_load_include('inc', 'js', 'includes/get');
     $request_result = js_get_page();
   }
-  // All other requests sent data must be processed and validated against the
-  // defined callback information.
   else {
-    // All callbacks must send at least these two parameters to ensure that
-    // a request is a valid callback, we use $_REQUEST here instead of $_POST
-    // because these could be passed as URL query parameters if needed. Unset
-    // them from the $_REQUEST data so they are not included later if it is
-    // processed later and passed as an argument to the callback.
-    $_js['module'] = FALSE;
-    if (!empty($_REQUEST['js_module'])) {
-      $_js['module'] = check_plain($_REQUEST['js_module']);
-      unset($_REQUEST['js_module']);
-    }
-    $_js['callback'] = FALSE;
-    if (!empty($_REQUEST['js_callback'])) {
-      $_js['callback'] = check_plain($_REQUEST['js_callback']);
-      unset($_REQUEST['js_callback']);
-    }
-
     // Only continue if a valid callback is found. Otherwise it will will return
     // the JS_MENU_NOT_FOUND integer.
     $info = js_get_callback($_js['module'], $_js['callback']);
@@ -234,13 +229,6 @@ function js_execute_request() {
     else {
       // Set the delivery callback found in the info.
       js_delivery_callback($info['delivery callback']);
-
-      // Retrieve the token passed in the request, if present.
-      $_js['token'] = FALSE;
-      if (!empty($_REQUEST['js_token'])) {
-        $_js['token'] = check_plain($_REQUEST['js_token']);
-        unset($_REQUEST['js_token']);
-      }
 
       // Enforce token validation if the token variable in the callback info is
       // not explicitly set to a boolean equaling FALSE.
