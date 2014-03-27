@@ -51,7 +51,7 @@ var JS = JS || {};
 
     // Normalize the URL to match an internal Drupal request.
     var ajax = $.extend({
-      url: Drupal.settings.basePath + 'js/' + url,
+      url: Drupal.settings.basePath + Drupal.settings.pathPrefix + 'js/' + url,
       type: 'GET',
       dataType: 'json',
       data: $.extend({
@@ -289,6 +289,7 @@ var JS = JS || {};
    */
   JS.snakeCaseObject = function (obj) {
     for (var key in obj) {
+      obj[key] = Drupal.checkPlain(obj[key]);
       var snakeCaseKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
       if (snakeCaseKey !== key) {
         var value = obj[key];
@@ -318,8 +319,12 @@ var JS = JS || {};
       $elements = $elements.add($(element).find(':input'));
     }
     $elements.each(function () {
-      var name, $input = $(this);
-      if ((name = $input.attr('name') || $input.attr('id') || null)) data[name] = $input.val();
+      var $input = $(this);
+      var name = $input.attr('name') || $input.attr('id') || null;
+      var value = $input.is(':checkbox') ? ($input.is(':checked') ? $input.val() : 0) : $input.val();
+      if (name) {
+        data[name] = value;
+      }
     });
     return data;
   };
