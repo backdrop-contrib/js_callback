@@ -23,9 +23,9 @@
  * @see js_ajax.js
  */
 function js_deliver_json($callback_result) {
-  global $_js;
-
   $json = array();
+
+  $redirect_codes = array(301, 302, 303, 307);
 
   // Handle error responses.
   if ($callback_result === JS_MENU_NOT_FOUND) {
@@ -57,16 +57,16 @@ function js_deliver_json($callback_result) {
       }
     }
     // Only add a "200 OK" response if not already set or request is a redirect.
-    $redirect_codes = array(301, 302, 303, 307);
     if (empty($json['response']['code']) || in_array($json['response']['code'], $redirect_codes)) {
       $json += js_http_response();
     }
   }
 
-  // Include helpful Drupal information that have been created during the
-  // request so it can be used by the callback handler.
-  $json['title'] = drupal_get_title();
-  $json['messages'] = drupal_get_messages();
+  // Include general Drupal information on non-redirecting requests.
+  if (!in_array($json['response']['code'], $redirect_codes)) {
+    $json['title'] = drupal_get_title();
+    $json['messages'] = drupal_get_messages();
+  }
 
   // Convert the JSON array into a string.
   $output = drupal_json_encode($json);

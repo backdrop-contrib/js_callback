@@ -75,5 +75,8 @@ function js_get_page() {
   if (!$main_content_display) {
     $page['content']['system_main'] = drupal_set_page_content();
   }
+  // Remove the "block" theme wrapper. This prevents a duplicate "system main"
+  // block from appearing while still rendering the content inside it.
+  $page['content']['system_main']['#theme_wrappers'] = array();
   return $page['content']['system_main'];
 }

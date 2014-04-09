@@ -1,148 +1,341 @@
-var JS = JS || {};
-
-(function ($) {
+(function (window, $, undefined) {
 
   /**
-   * A placeholder. This is initialized on DOM ready.
-   */
-  JS.messages = $();
-
-  /**
-   * The selector used to identify where messages are placed.
+   * Method for executing JS callback requests; wraps $.ajax().
    *
-   * The last selector found (in order of the DOM tree) will be used. Themes
-   * can override this with a single specific selector if a guaranteed element
-   * will be present.
-   */
-  JS.messagesSelector = 'body, #main, #content, #block-system-main, #messages';
-
-  /**
-   * DOM ready.
-   */
-  $(document).ready(function () {
-    JS.messages = $('<div class="js-messages"></div>').prependTo($(JS.messagesSelector).last());
-  });
-
-  /**
-   * Method for executing JS callback requests; wraps jQuery.ajax().
+   * @param {object} options
+   *   The default option to pass to the $.ajax() method.
    *
-   * @param {object} defaults
-   *   The default option to pass to the jQuery.ajax request. Warning: these
-   *   will override the default properties set in this method. The methods:
-   *   "beforeSend", "error", "success" and "complete" will automatically be
-   *   wrapped.
+   * @return {JsAjax}
    */
-  JS.ajax = function (defaults) {
-    defaults = defaults || {};
-    defaults.trigger = (defaults.trigger && $(defaults.trigger)) || $();
+  var JsAjax = function (options) {
+    var
+      JS = window.JS,
+      host = window.location.origin,
+      base = Drupal.settings.basePath || '/',
+      prefix = Drupal.settings.pathPrefix || '',
+      theme = Drupal.settings.ajaxPageState && Drupal.settings.ajaxPageState.theme || '';
 
-    // Don't allow the url to be overridden.
-    var url = '';
-    if (defaults.url) {
-      url = defaults.url.replace(new RegExp('^(' + window.location.origin + ')?(' + Drupal.settings.basePath + ')', 'i'), '') || '';
-      delete defaults.url;
-    }
+    this.defaults = options || {};
+    this.options = options || {};
 
     // Redirect page immediately if URL is external.
-    if (JS.isExternalLink(url)) {
-      window.location = url;
-      return;
+    if (JS.urlIsExternal(this.options.url)) {
+      window.location = this.options.url;
+      return undefined;
     }
 
-    // Normalize the URL to match an internal Drupal request.
-    var ajax = $.extend({
-      url: Drupal.settings.basePath + Drupal.settings.pathPrefix + 'js/' + url,
+    // Merge in default options.
+    this.options = $.extend({
       type: 'GET',
       dataType: 'json',
-      data: $.extend({
+      data: {
         // Send the current theme being used so returned results can be rendered
         // using the correct theme (if needed).
-        js_theme: Drupal.settings.ajaxPageState.theme
-      }, defaults.trigger.data()),
-      defaults: defaults
-    }, defaults);
+        js_theme: theme
+      },
+      $trigger: this.options.$trigger && $(this.options.$trigger) || $()
+    }, this.options);
+
+    // Merge in trigger element data attributes as "data" to be passed.
+    if (this.options.$trigger.length) {
+      var
+        i,
+        data = this.options.$trigger.data(),
+        ignoreData = this.options.$trigger.data('js-ignore-data') || this.options.jsIgnoreData || [];
+      for (i in data) {
+        if (data.hasOwnProperty(i)) {
+          if ($.inArray(i, ignoreData) !== -1) {
+            delete data[i];
+          }
+        }
+      }
+      this.options.data = $.extend(this.options.data, data);
+    }
+
+    // Normalize url so it excludes the domain and base path.
+    this.options.url = this.options.url && this.options.url.replace(new RegExp('^(' + host + ')?(' + base + ')?(' + prefix + ')?', 'i'), '') || '';
+
+    // Force prefix the URL to use the internal JS module callback path. If
+    // requests do not want it to be processed by the JS module, then the
+    // normal $.ajax() method should be used instead.
+    this.options.url = base + prefix + 'js/' + (this.options.url ? prefix + this.options.url : '');
 
     // Normalize data keys to Drupal variable standards.
-    JS.snakeCaseObject(ajax.data);
+    JS.snakeCaseObject(this.options.data);
 
-    // Wrap the beforeSend method.
-    ajax.beforeSend = function (xmlhttprequest, options) {
-      this.ajaxing = true;
-      this.redirecting = false;
+    // Execute the request using $.ajax().
+    this.jqXHR = $.ajax(this.options);
 
-      // Clear any current messages previous set from JS requests.
-      JS.messages.html('');
-
-      // Modify the trigger to show appropriate state.
-      this.trigger
-        .removeClass('error')
-        .addClass('ajaxing disabled')
-        .attr('disabled', 'disabled');
-
-      // Execute passed "beforeSend" callback, if it exists.
-      if (typeof(defaults.beforeSend) === 'function') {
-        defaults.beforeSend.apply(this, [xmlhttprequest, options]);
-      }
-    };
-
-    // Wrap the "error" callback.
-    ajax.error = function (jqXHR, textStatus, errorThrown) {
-      // Process JSON data, if present.
-      JS.processJSON.apply(this, [jqXHR]);
-
-      // Execute passed "error" callback, if not redirecting and it exists.
-      if (!this.redirecting && typeof(defaults.error) === 'function') {
-        defaults.error.apply(this, [jqXHR, textStatus, errorThrown]);
-      }
-    };
-
-    // Wrap the "success" callback.
-    ajax.success = function (data, textStatus, jqXHR) {
-      // Process JSON data, if present.
-      JS.processJSON.apply(this, [jqXHR]);
-
-      // Execute passed "success" callback, if not redirecting and it exists.
-      if (!this.redirecting && typeof(defaults.success) === 'function') {
-        defaults.success.apply(this, [data, textStatus, jqXHR]);
-      }
-    };
-
-    // Wrap the "complete" callback.
-    ajax.complete = function (jqXHR, status) {
-      this.ajaxing = false;
-
-      // Modify the trigger to show appropriate state.
-      this.trigger
-        .removeClass('ajaxing disabled')
-        .removeAttr('disabled');
-
-      // Execute passed "complete" callback, if not redirecting and it exists.
-      if (!this.redirecting && typeof(defaults.complete) === 'function') {
-        defaults.complete.apply(this, [jqXHR, status]);
-      }
-    };
-
-    // Execute the request using jQuery.ajax(). Do not return the chainable
-    // jQuery.AjaxEvent methods because it can cause events to not trigger
-    // properly when things like redirects happen.
-    $.ajax(ajax);
+    return this;
   };
+
+  /**
+   * Internal AJAX handler.
+   *
+   * Iterates over each JS.behavior and fires the appropriate method if it
+   * exists.
+   *
+   * @param {string} type
+   *   The type of event, should be one of: beforeSend, error, success or
+   *   complete.
+   * @param {Event} event
+   *   The native Event object.
+   * @param {XMLHttpRequest} jqXHR
+   *   The jQuery XMLHttpRequest object.
+   * @param {object} options
+   *   The jQuery AJAX options.
+   */
+  var JsAjaxBehaviors = function (type, event, jqXHR, options) {
+    var JS = window.JS;
+    // Ensure on JS module requests are processed.
+    if (!!options.url.match(new RegExp('^' + Drupal.settings.basePath + Drupal.settings.pathPrefix + 'js'))) {
+      // Older versions of jQuery do not have jqXHR.responseJSON, we must parse
+      // the responseText manually.
+      var json = options.dataType === 'json' && jqXHR.responseText && $.parseJSON(jqXHR.responseText) || {};
+
+      // Process our own internal events (so they cannot be overridden).
+      switch (type) {
+        case 'beforeSend':
+          JS.messages.html('');
+          this.ajaxing = true;
+          this.redirecting = false;
+          options.$trigger
+            .removeClass('error')
+            .addClass('ajaxing disabled')
+            .attr('disabled', 'disabled');
+          break;
+
+        case 'error':
+        case 'success':
+          // Response was redirected, pass this response onto the redirect handler.
+          if (json.response && json.response.code && json.response.url && $.inArray(json.response.code, [301, 302, 303, 307]) !== -1) {
+            // Only redirect requests internally if the origin matches (or forced).
+            if (!json.response.force && new RegExp('^' + window.location.origin).test(json.response.url)) {
+              this.redirecting = true;
+              // Redirects do not process any information, change the type back to
+              // GET, remove the data and set the new URL.
+              this.defaults.type = 'GET';
+              this.defaults.data = {};
+              this.defaults.url = json.response.url;
+              JS.ajax(this.defaults);
+            }
+            // Otherwise redirect the entire page.
+            else {
+              window.location = json.response.url;
+            }
+            // A redirection has occurred, return immediately.
+            return;
+          }
+
+          // Parse and display any Drupal messages set.
+          if (json.messages) {
+            JS.messages
+              .prepend(Drupal.theme('statusMessages', json.messages))
+              .trigger('loaded');
+          }
+          break;
+
+        case 'complete':
+          options.$trigger
+            .removeClass('ajaxing disabled')
+            .removeAttr('disabled');
+          break;
+      }
+
+      // Iterate over AJAX behaviors.
+      var args = [event, jqXHR, options, json];
+      for (var i in JS.behaviors) {
+        if (JS.behaviors.hasOwnProperty(i) && typeof JS.behaviors[i] === 'object') {
+          if (typeof JS.behaviors[i][type] !== 'undefined' && typeof JS.behaviors[i][type] === 'function') {
+            JS.behaviors[i][type].apply(this, args);
+          }
+        }
+      }
+
+      // Remove the instance.
+      if (type === 'complete') {
+        this.ajaxing = false;
+        delete JS.instances[options._jsInstance];
+      }
+    }
+  };
+
+  /**
+   * Instantiate the global JS object.
+   */
+  window.JS = window.JS || {
+    /**
+     * Initiates a new instance of JsAjax; wrapper for $.ajax().
+     *
+     * @param options
+     *   The $.ajax() options to use.
+     */
+    ajax: function (options) {
+      var instance;
+      options = options || {};
+      // Save this instance using a new identifier.
+      options._jsInstance = this.instanceCount++;
+      instance = this.instances[options._jsInstance] = new JsAjax(options);
+      return instance.jqXHR;
+    },
+
+    /**
+     * Contains the active JsAjax instances.
+     * @type {object}
+     */
+    instances: {},
+
+    /**
+     * A counter for uniquely identifying active JsAjax instances.
+     * @type {object}
+     */
+    instanceCount: 0,
+
+    /**
+     * Contains event behaviors to be used during active JsAjax instances.
+     * @type {object}
+     * @see JsAjaxBehaviors
+     */
+    behaviors: {},
+
+    /**
+     * A placeholder. This is initialized on DOM ready.
+     * @type {jQuery}
+     */
+    messages: $(),
+
+    /**
+     * The selector used to identify where messages should be placed.
+     *
+     * The last selector found (in order of the DOM tree) will be used. Themes
+     * can override this with a single specific selector if a guaranteed element
+     * will be present.
+     *
+     * @type {string}
+     */
+    messagesSelector: 'body, #main, #content, #block-system-main, #messages',
+
+    /**
+     * Helper method for processing names and values of form elements.
+     *
+     * @param {Node|jQuery} element
+     *   The DOM node or jQuery element. It can can be a single form element or
+     *   if a higher element is passes (like a form), then all input elements
+     *   found inside it will be added to the data array.
+     *
+     * @returns {object}
+     *   The data to use.
+     */
+    processFormValues: function (element) {
+      var $elements = $(), data = {};
+      if ($(element).is(':input')) {
+        $elements = $elements.add(element);
+      }
+      else {
+        $elements = $elements.add($(element).find(':input'));
+      }
+      $elements.each(function () {
+        var $input = $(this);
+        var name = $input.attr('name') || $input.attr('id') || null;
+        var value = $input.is(':checkbox') ? ($input.is(':checked') ? $input.val() : 0) : $input.val();
+        if (name) {
+          data[name] = value;
+        }
+      });
+      return data;
+    },
+
+    /**
+     * Converts object keys from jsonLowerCamelCase to drupal_php_snake_case.
+     *
+     * @param {object} obj
+     *   The object to iterate over.
+     */
+    snakeCaseObject: function (obj) {
+      for (var key in obj) {
+        if (obj.hasOwnProperty(key)) {
+          obj[key] = Drupal.checkPlain(obj[key]);
+          var snakeCaseKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+          if (snakeCaseKey !== key) {
+            var value = obj[key];
+            delete obj[key];
+            obj[snakeCaseKey] = value;
+          }
+        }
+      }
+    },
+
+    /**
+     * Helper function for determining whether a URL is of same origin.
+     *
+     * @param {string} url
+     *   The URL to test. It can be a FQDN (fully qualified domain name),
+     *   relative or empty.
+     *
+     * @return {bool}
+     *
+     * @see http://stackoverflow.com/a/6238456
+     */
+    urlIsExternal: function (url) {
+      url = url || '';
+      var match = url.match(/^([^:\/?#]+:)?(?:\/\/([^\/?#]*))?([^?#]+)?(\?[^#]*)?(#.*)?/);
+      if (match && typeof match[1] === "string" && match[1].length > 0 && match[1].toLowerCase() !== window.location.protocol) return true;
+      return (match && typeof match[2] === "string" && match[2].length > 0 && match[2].replace(new RegExp(":("+{"http:":80,"https:":443}[window.location.protocol]+")?$"), "") !== window.location.host);
+    }
+
+  };
+
+  /**
+   * Register global events.
+   */
+  $(document)
+    // jQuery AJAX events.
+    .ajaxSend(function(event, jqXHR, options) {
+      var JS = window.JS;
+      if (options._jsInstance !== undefined) {
+        JsAjaxBehaviors.apply(JS.instances[options._jsInstance], ['beforeSend', event, jqXHR, options]);
+      }
+    })
+    .ajaxError(function(event, jqXHR, options) {
+      var JS = window.JS;
+      if (options._jsInstance !== undefined) {
+        JsAjaxBehaviors.apply(JS.instances[options._jsInstance], ['error', event, jqXHR, options]);
+      }
+    })
+    .ajaxSuccess(function(event, jqXHR, options) {
+      var JS = window.JS;
+      if (options._jsInstance !== undefined) {
+        JsAjaxBehaviors.apply(JS.instances[options._jsInstance], ['success', event, jqXHR, options]);
+      }
+    })
+    .ajaxComplete(function (event, jqXHR, options) {
+      var JS = window.JS;
+      if (options._jsInstance !== undefined) {
+        JsAjaxBehaviors.apply(JS.instances[options._jsInstance], ['complete', event, jqXHR, options]);
+      }
+    })
+    // Attach the messages element when the DOM is ready.
+    .ready(function () {
+      var JS = window.JS;
+      JS.messages = $('<div class="js-messages"></div>').prependTo($(JS.messagesSelector).last());
+    });
 
   /**
    * jQuery plugin for a JS Callback.
    *
-   * @param module
+   * @param {string|object} module
    *   The module name the callback resides in.
-   * @param callback
+   * @param {string|object} [callback]
    *   The specific callback to invoke.
-   * @param options
+   * @param {object} [options]
    *   Any additional options to pass to the jQuery.ajax() call.
    *
    * @return {jQuery}
    *   The chainable jQuery object.
    */
   $.fn.jsCallback = function (module, callback, options) {
-    var $this = $(this);
+    var $this = $(this), JS = window.JS;
     options = (typeof module === 'object' && module) || (typeof callback === 'object' && callback) || (typeof options === 'object' && options) || {};
     module = typeof module === 'string' && module || null;
     callback = typeof callback === 'string' && callback || null;
@@ -150,15 +343,12 @@ var JS = JS || {};
     var data = $.extend({
       js_module: module,
       js_callback: callback,
-      js_token: (module && callback && Drupal.settings.js.tokens[module + '-' + callback]) || null
-    }, options.data, $this.data());
-    if (options.data) {
-      delete options.data;
-    }
+      js_token: (module && callback && Drupal.settings.js && Drupal.settings.js.tokens && Drupal.settings.js.tokens[module + '-' + callback]) || null
+    }, options.data);
     JS.ajax($.extend({
       type: 'POST',
       data: data,
-      trigger: $this
+      $trigger: $this
     }, options));
     return $this;
   };
@@ -189,18 +379,17 @@ var JS = JS || {};
    *   The chainable jQuery object.
    */
   $.fn.jsGet = function (url, options) {
-    var $this = $(this);
+    var $this = $(this), JS = window.JS;
     options = (typeof url === 'object' && url) || (typeof options === 'object' && options) || {};
-    url = typeof url === 'string' && url || null;
+    url = typeof url === 'string' && url || undefined;
     var $target = $($this.data('target'));
     if (!url && ($this.is('a[href]') || $target.length)) {
-      url = $target.attr('href') || $this.attr('href') || null;
+      url = $target.attr('href') || $this.attr('href') || undefined;
     }
     if (url) {
       JS.ajax($.extend({
         url: url,
-        data: $this.data(),
-        trigger: $this
+        $trigger: $this
       }, options));
     }
     return $this;
@@ -216,11 +405,15 @@ var JS = JS || {};
    *   The chainable jQuery object.
    */
   $.fn.jsForm = function (options) {
-    var $form = $(this);
+    var $form = $(this), JS = window.JS;
     if (!$form.is('form')) {
       return $form;
     }
     options = typeof options === 'object' && options || {};
+    var $trigger = $();
+    $form.find(':button').bind('click', function () {
+      $trigger = $(this);
+    });
     $form.bind('submit', function (e) {
       // Prevent the form submission.
       e.preventDefault();
@@ -232,110 +425,20 @@ var JS = JS || {};
       data['js_module'] = 'js';
       data['js_callback'] = 'form';
 
+      // Override op submitted.
+      if ($trigger.is('[name=op]')) {
+        data.op = $trigger.val();
+      }
+
       // Send the request.
       JS.ajax($.extend({
         type: $form.attr('method').toUpperCase(),
         url: $form.attr('action'),
-        data: data
+        data: data,
+        $trigger: $trigger
       }, options));
     });
     return $form;
-  };
-
-  /**
-   * Process the JSON reponses from JS requests, if any.
-   * @param {jqXHR} jqXHR
-   */
-  JS.processJSON = function (jqXHR) {
-    // Older versions of jQuery do not have jqXHR.responseJSON, we must parse
-    // it manually.
-    if (this.dataType === 'json' && jqXHR.responseText) {
-      var json = $.parseJSON(jqXHR.responseText) || {};
-
-      // Response was redirected, pass this response onto the redirect handler.
-      if (json.response && json.response.code && json.response.url && $.inArray(json.response.code, [301, 302, 303, 307]) !== -1) {
-        // Only redirect requests internally if the origin matches.
-        if (new RegExp('^' + window.location.origin).test(json.response.url)) {
-          this.redirecting = true;
-          // Redirects do not process any information, change the type back to
-          // GET, remove the data and set the new URL.
-          this.defaults.type = 'GET';
-          this.defaults.data = {};
-          this.defaults.url = json.response.url.replace(window.location.origin + Drupal.settings.basePath, '');
-          JS.ajax(this.defaults);
-        }
-        // Otherwise redirect the entire page.
-        else {
-          window.location = json.response.url;
-        }
-        // Don't continue processing.
-        return;
-      }
-
-      // Parse and display any Drupal messages set.
-      if (json.messages) {
-        JS.messages
-          .prepend(Drupal.theme('statusMessages', json.messages))
-          .trigger('loaded');
-      }
-    }
-  };
-
-  /**
-   * Converts object keys from jsonLowerCamelCase to drupal_php_snake_case.
-   *
-   * @param {Object} obj
-   *   The object to iterate over.
-   */
-  JS.snakeCaseObject = function (obj) {
-    for (var key in obj) {
-      obj[key] = Drupal.checkPlain(obj[key]);
-      var snakeCaseKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-      if (snakeCaseKey !== key) {
-        var value = obj[key];
-        delete obj[key];
-        obj[snakeCaseKey] = value;
-      }
-    }
-  };
-
-  /**
-   * Helper method for processing names and values of form elements.
-   *
-   * @param {Node|jQuery} element
-   *   The DOM node or jQuery element. It can can be a single form element or
-   *   if a higher element is passes (like a form), then all input elements
-   *   found inside it will be added to the data array.
-   *
-   * @returns {object}
-   *   The data to use.
-   */
-  JS.processFormValues = function (element) {
-    var $elements = $(), data = {};
-    if ($(element).is(':input')) {
-      $elements = $elements.add(element);
-    }
-    else {
-      $elements = $elements.add($(element).find(':input'));
-    }
-    $elements.each(function () {
-      var $input = $(this);
-      var name = $input.attr('name') || $input.attr('id') || null;
-      var value = $input.is(':checkbox') ? ($input.is(':checked') ? $input.val() : 0) : $input.val();
-      if (name) {
-        data[name] = value;
-      }
-    });
-    return data;
-  };
-
-  /**
-   * http://stackoverflow.com/a/6238456
-   */
-  JS.isExternalLink = function (url) {
-    var match = url.match(/^([^:\/?#]+:)?(?:\/\/([^\/?#]*))?([^?#]+)?(\?[^#]*)?(#.*)?/);
-    if (typeof match[1] === "string" && match[1].length > 0 && match[1].toLowerCase() !== window.location.protocol) return true;
-    return (typeof match[2] === "string" && match[2].length > 0 && match[2].replace(new RegExp(":("+{"http:":80,"https:":443}[window.location.protocol]+")?$"), "") !== window.location.host);
   };
 
   /**
@@ -372,8 +475,7 @@ var JS = JS || {};
     return output;
   };
 
-
-})(jQuery);
+})(window, window.jQuery);
 
 
 

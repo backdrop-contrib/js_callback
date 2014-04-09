@@ -46,16 +46,30 @@ function js_permission() {
 }
 
 /**
+ * Implements hook_library().
+ */
+function js_library() {
+  $libraries['js'] = array(
+    'title' => 'JS AJAX Handler',
+    'version' => '2.0.0',
+    'js' => array(
+      drupal_get_path('module', 'js') . '/js.js' => array(
+        'weight' => -100,
+      ),
+    ),
+    'dependencies' => array(
+      array('system', 'jquery'),
+    ),
+  );
+  return $libraries;
+}
+
+/**
  * Implements hook_preprocess_page().
  *
  * Provide necessary JS functionality so modules can generate easier requests.
  */
 function js_preprocess_page() {
-  // Add the JS.ajax wrapper to the page so modules can wrap their
-  // requests.
-  drupal_add_js(drupal_get_path('module', 'js') . '/js.js', array(
-    'group' => JS_LIBRARY,
-  ));
   // Add any unique tokens created to the current page request. This is to help
   // ensure valid JS requests. Note, this only adds tokens that were generated
   // on this page request. It does not provide tokens for all callbacks.
@@ -119,6 +133,9 @@ function js_drupal_goto_alter(&$path, &$options, &$http_response_code) {
     // should handle a redirect internally or just redirect the browser page.
     $options['absolute'] = TRUE;
     $json['response']['url'] = url($path, $options);
+    if (!empty($options['force'])) {
+      $json['response']['force'] = TRUE;
+    }
     js_deliver_json($json);
   }
 }
