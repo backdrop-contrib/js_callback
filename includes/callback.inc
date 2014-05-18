@@ -220,7 +220,7 @@ function js_callback_process_request(&$info) {
   $json_values = array('true', 'false', '1', '0', 'yes', 'no');
   foreach ($_REQUEST as $key => $value) {
     // Convert possible JSON strings into arrays.
-    if (is_string($value) && ($json = drupal_json_decode($value))) {
+    if (is_string($value) && ($value[0] === '[' || $value[0] === '{') && ($json = drupal_json_decode($value))) {
       $request_data[$key] = $json;
     }
     // Convert certain JSON values into booleans.
