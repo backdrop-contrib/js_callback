@@ -145,7 +145,10 @@ function js_drupal_goto_alter(&$path, &$options, &$http_response_code) {
  */
 function js_element_info_alter(&$type) {
   foreach ($type as $name => $element) {
-    $type[$name]['#pre_render'][] = 'js_pre_render_element';
+    if (!isset($type[$name]['#pre_render'])) {
+      $type[$name]['#pre_render'] = array();
+    }
+    array_unshift($type[$name]['#pre_render'], 'js_pre_render_element');
   }
 }
 
