@@ -452,6 +452,9 @@
       warning: Drupal.t('Warning message')
     };
     for (var type in messages) {
+      if (!messages.hasOwnProperty(type)) {
+        continue;
+      }
       if (messages[type].length > 0) {
         output += "<div class=\"messages " + type + "\">\n";
         if (typeof(status_heading[type]) !== 'undefined') {
