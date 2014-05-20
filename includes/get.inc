@@ -77,6 +77,8 @@ function js_get_page() {
   }
   // Remove the "block" theme wrapper. This prevents a duplicate "system main"
   // block from appearing while still rendering the content inside it.
-  $page['content']['system_main']['#theme_wrappers'] = array();
+  if (isset($page['content']['system_main']['#theme_wrappers']) && ($key = array_search('block', $page['content']['system_main']['#theme_wrappers']))) {
+    unset($page['content']['system_main']['#theme_wrappers'][$key]);
+  }
   return $page['content']['system_main'];
 }
