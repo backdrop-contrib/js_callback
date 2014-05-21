@@ -85,3 +85,12 @@ function hook_js_info() {
   );
   return $callbacks;
 }
+
+/**
+ * Alter allowed tags used in XSS filtering. Uses filter_xss_admin() defaults.
+ *
+ * @see filter_xss_admin()
+ */
+function hook_js_callback_filter_xss_alter(array &$allowed_tags = array()) {
+  $allowed_tags[] = 'button';
+}

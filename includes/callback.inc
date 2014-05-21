@@ -282,8 +282,13 @@ function js_callback_process_request(&$info) {
  *   The filtered result.
  */
 function js_callback_filter_xss($result) {
+  static $allowed_tags;
+  if (!isset($allowed_tags)) {
+    $allowed_tags = array('a', 'abbr', 'acronym', 'address', 'article', 'aside', 'b', 'bdi', 'bdo', 'big', 'blockquote', 'br', 'caption', 'cite', 'code', 'col', 'colgroup', 'command', 'dd', 'del', 'details', 'dfn', 'div', 'dl', 'dt', 'em', 'figcaption', 'figure', 'footer', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hgroup', 'hr', 'i', 'img', 'ins', 'kbd', 'li', 'mark', 'menu', 'meter', 'nav', 'ol', 'output', 'p', 'pre', 'progress', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'section', 'small', 'span', 'strong', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'time', 'tr', 'tt', 'u', 'ul', 'var', 'wbr');
+    drupal_alter('js_callback_filter_xss', $allowed_tags);
+  }
   if (is_string($result)) {
-    $result = filter_xss_admin($result);
+    $result = filter_xss($result, $allowed_tags);
   }
   elseif (is_array($result)) {
     foreach ($result as $key => $value) {
@@ -293,7 +298,7 @@ function js_callback_filter_xss($result) {
       }
       // Filter strings against XSS.
       elseif (is_string($value)) {
-        $result[$key] = filter_xss_admin($value);
+        $result[$key] = filter_xss($value, $allowed_tags);
       }
     }
   }
