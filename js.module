@@ -177,6 +177,12 @@ function js_pre_render_element($element) {
 function js_execute_request() {
   // Provide a global JS variable that will be used through out the request.
   global $_js;
+  global $conf;
+
+  // Memcache requires an additional bootstrap phase to access variables.
+  if ($conf['cache_default_class'] === 'MemCacheDrupal') {
+    drupal_bootstrap(DRUPAL_BOOTSTRAP_VARIABLES);
+  }
 
   // Immediately clone the request method so it cannot be altered any further.
   static $method;
