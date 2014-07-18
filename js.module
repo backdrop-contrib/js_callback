@@ -180,7 +180,7 @@ function js_execute_request() {
   global $conf;
 
   // Memcache requires an additional bootstrap phase to access variables.
-  if ($conf['cache_default_class'] === 'MemCacheDrupal') {
+  if (!empty($conf['cache_default_class']) && $conf['cache_default_class'] === 'MemCacheDrupal') {
     drupal_bootstrap(DRUPAL_BOOTSTRAP_VARIABLES);
   }
 
