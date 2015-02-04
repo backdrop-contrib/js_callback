@@ -405,11 +405,11 @@ function js_get_callback($module = NULL, $callback = NULL, $reset = FALSE) {
             'token' => TRUE,
             'xss' => TRUE,
           );
-          // Invokes hook_js_info_alter(). Allow modules to alter the callback
-          // info before it's cached in the database.
-          drupal_alter('js_info', $callbacks[$_module][$_callback]);
         }
       }
+      // Invokes hook_js_info_alter(). Allow modules to alter the callback
+      // info before it's cached in the database.
+      drupal_alter('js_info', $callbacks);
       cache_set($cid, $callbacks);
     }
   }
