@@ -110,8 +110,13 @@ function js_callback_bootstrap(array &$info) {
     // Load required include files based on the callback.
     if (isset($info['includes']) && is_array($info['includes'])) {
       foreach ($info['includes'] as $include) {
-        if (file_exists("./includes/$include.inc")) {
-          require_once "./includes/$include.inc";
+        $file = "./includes/$include.inc";
+        // Check if base includes are overwritten.
+        if (isset($GLOBALS['conf'][$include . '_inc'])) {
+          $file = $GLOBALS['conf'][$include . '_inc'];
+        }
+        if (file_exists($file)) {
+          require_once $file;
         }
       }
     }
