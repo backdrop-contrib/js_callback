@@ -255,7 +255,12 @@
     snakeCaseObject: function (obj) {
       for (var key in obj) {
         if (obj.hasOwnProperty(key)) {
-          obj[key] = Drupal.checkPlain(obj[key]);
+          if ($.isFunction(obj[key])) {
+            delete obj[key];
+          }
+          else if (!$.isPlainObject(obj[key]) && !$.isArray(obj[key])) {
+            obj[key] = Drupal.checkPlain(obj[key]);
+          }
           var snakeCaseKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
           if (snakeCaseKey !== key) {
             var value = obj[key];
@@ -479,6 +484,3 @@
   };
 
 })(window, window.jQuery);
-
-
-
