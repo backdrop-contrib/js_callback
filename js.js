@@ -100,10 +100,13 @@
           JS.messages.html('');
           this.ajaxing = true;
           this.redirecting = false;
-          options.$trigger
-            .removeClass('error')
-            .addClass('ajaxing disabled')
-            .attr('disabled', 'disabled');
+          options.$trigger.removeClass('error').addClass('ajaxing disabled');
+          if ($.fn.prop) {
+            options.$trigger.prop('disabled', true);
+          }
+          else {
+            options.$trigger.attr('disabled', 'disabled');
+          }
           break;
 
         case 'error':
@@ -137,9 +140,13 @@
           break;
 
         case 'complete':
-          options.$trigger
-            .removeClass('ajaxing disabled')
-            .removeAttr('disabled');
+          options.$trigger.removeClass('ajaxing disabled');
+          if ($.fn.prop) {
+            options.$trigger.prop('disabled', 'false');
+          }
+          else {
+            options.$trigger.removeAttr('disabled');
+          }
           break;
       }
 
