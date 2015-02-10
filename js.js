@@ -142,7 +142,7 @@
         case 'complete':
           options.$trigger.removeClass('ajaxing disabled');
           if ($.fn.prop) {
-            options.$trigger.prop('disabled', 'false');
+            options.$trigger.prop('disabled', false);
           }
           else {
             options.$trigger.removeAttr('disabled');
