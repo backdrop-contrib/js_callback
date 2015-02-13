@@ -66,6 +66,21 @@ function js_deliver_json($callback_result) {
   if (!in_array($json['response']['code'], $redirect_codes)) {
     $json['title'] = drupal_get_title();
     $json['messages'] = drupal_get_messages();
+
+    // Add in any request JS settings.
+    $js = drupal_add_js();
+    $settings = array();
+    if (isset($js['settings']['data'])) {
+      foreach ($js['settings']['data'] as $setting) {
+        $settings = drupal_array_merge_deep($settings, $setting);
+      }
+
+      // Remove unnecessary core default settings.
+      unset($settings['basePath']);
+      unset($settings['pathPrefix']);
+      unset($settings['ajaxPageState']);
+    }
+    $json['settings'] = $settings;
   }
 
   // Convert the JSON array into a string.

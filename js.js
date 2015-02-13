@@ -131,6 +131,11 @@
             return;
           }
 
+          // Merge in any request JS settings.
+          if (json.settings) {
+            Drupal.settings = $.extend(true, {}, Drupal.settings, json.settings);
+          }
+
           // Parse and display any Drupal messages set.
           if (json.messages) {
             JS.messages
