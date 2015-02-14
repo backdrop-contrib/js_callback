@@ -26,7 +26,7 @@
     }
 
     // Merge in default options.
-    this.options = $.extend({
+    this.options = $.extend(true, {
       type: 'GET',
       dataType: 'json',
       data: {
@@ -50,7 +50,7 @@
           }
         }
       }
-      this.options.data = $.extend(this.options.data, data);
+      this.options.data = $.extend(true, this.options.data, data);
     }
 
     // Normalize url so it excludes the domain and base path.
@@ -357,12 +357,12 @@
     module = typeof module === 'string' && module || null;
     callback = typeof callback === 'string' && callback || null;
     // Ensure that our default data does not get overridden.
-    var data = $.extend({
+    var data = $.extend(true, {
       js_module: module,
       js_callback: callback,
       js_token: (module && callback && Drupal.settings.js && Drupal.settings.js.tokens && Drupal.settings.js.tokens[module + '-' + callback]) || null
     }, options.data);
-    JS.ajax($.extend({
+    JS.ajax($.extend(true, {
       type: 'POST',
       data: data,
       $trigger: $this
@@ -404,7 +404,7 @@
       url = $target.attr('href') || $this.attr('href') || undefined;
     }
     if (url) {
-      JS.ajax($.extend({
+      JS.ajax($.extend(true, {
         url: url,
         $trigger: $this
       }, options));
@@ -448,7 +448,7 @@
       }
 
       // Send the request.
-      JS.ajax($.extend({
+      JS.ajax($.extend(true, {
         type: $form.attr('method').toUpperCase(),
         url: $form.attr('action'),
         data: data,
