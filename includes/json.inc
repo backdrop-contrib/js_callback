@@ -48,7 +48,7 @@ function js_deliver_json($callback_result) {
       // inside the "content" key.
       if (js_is_renderable($callback_result)) {
         // Rendering requires theming, fully bootstrap Drupal.
-        drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+        js_bootstrap(DRUPAL_BOOTSTRAP_FULL);
         // Set the rendered data as "content".
         $json['content'] = drupal_render($callback_result);
       }

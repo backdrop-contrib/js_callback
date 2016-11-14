@@ -75,12 +75,12 @@ function js_callback_bootstrap(array &$info) {
 
   // The following mimics the behavior of _drupal_bootstrap_full().
   // The difference is that not all modules and includes are loaded.
-  if (drupal_bootstrap($info['bootstrap']) < DRUPAL_BOOTSTRAP_FULL) {
+  if (js_bootstrap($info['bootstrap']) < DRUPAL_BOOTSTRAP_FULL) {
     // If "access callback" isn't passed, but "access arguments" is,
     // default to using "user_access" and bootstrap Drupal to at least
     // DRUPAL_BOOTSTRAP_SESSION and ensure the user module has loaded.
     if (empty($info['access callback']) && !empty($info['access arguments'])) {
-      drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
+      js_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
       if (!in_array('user', $info['dependencies'])) {
         $info['dependencies'][] = 'user';
       }
@@ -101,9 +101,9 @@ function js_callback_bootstrap(array &$info) {
       }
       // Boot at least DRUPAL_BOOTSTRAP_VARIABLES to ensure
       // drupal_multilingual() works.
-      drupal_bootstrap(DRUPAL_BOOTSTRAP_VARIABLES);
+      js_bootstrap(DRUPAL_BOOTSTRAP_VARIABLES);
       if (drupal_multilingual()) {
-        drupal_bootstrap(DRUPAL_BOOTSTRAP_LANGUAGE);
+        js_bootstrap(DRUPAL_BOOTSTRAP_LANGUAGE);
       }
     }
 

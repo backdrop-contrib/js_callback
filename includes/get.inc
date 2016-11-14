@@ -12,29 +12,10 @@
  *   error occurred.
  */
 function js_get_page() {
-  global $_js;
-
   // To avoid having to reinitialize most of Drupal to return the correct
   // page request, the bootstrap state remains as minimal as possible until
-  // we reach this point so we can override the necessary server sent variables
-  // with the real requested path. After that has occurred, Drupal can be
-  // fully bootstrapped.
-  $path = implode('/', $_js['args']);
-  $_GET['q'] = $path;
-  if (isset($_SERVER['REQUEST_URI'])) {
-    $_SERVER['REQUEST_URI'] = '/' . $path;
-  }
-  else {
-    if (isset($_SERVER['argv'])) {
-      $_SERVER['argv'][0] = $path;
-    }
-    elseif (isset($_SERVER['QUERY_STRING'])) {
-      $_SERVER['QUERY_STRING'] = 'q=' . $path;
-    }
-  }
-
-  // At this point we can fully bootstrap Drupal safely.
-  drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+  // we reach this point. At this point we can fully bootstrap Drupal safely.
+  js_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 
   // Retrieve the results for the active menu handler. This is identical to
   // index.php, expect that we do not deliver the page here. The results must

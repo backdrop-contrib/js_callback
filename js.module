@@ -181,7 +181,7 @@ function js_execute_request() {
 
   // Memcache requires an additional bootstrap phase to access variables.
   if (!empty($conf['cache_default_class']) && $conf['cache_default_class'] === 'MemCacheDrupal') {
-    drupal_bootstrap(DRUPAL_BOOTSTRAP_VARIABLES);
+    js_bootstrap(DRUPAL_BOOTSTRAP_VARIABLES);
   }
 
   // Immediately clone the request method so it cannot be altered any further.
@@ -266,7 +266,7 @@ function js_execute_request() {
       // be anonymous as the token would be the same for anonymous users. This
       // is a security requirement.
       if ($validate_token) {
-        drupal_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
+        js_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
         drupal_load('module', 'user');
         $token_valid = !user_is_anonymous() && drupal_valid_token($_js['token'], 'js-' . $_js['module'] . '-' . $_js['callback']);
       }
@@ -299,6 +299,53 @@ function js_execute_request() {
   // appropriate headers, handling the result returned from the callback and
   // exiting the script properly.
   call_user_func_array($delivery_callback, array($request_result));
+}
+
+/**
+ * Ensures Drupal is bootstrapped to the specified phase.
+ *
+ * @param int $phase
+ *   A constant telling which phase to bootstrap to.
+ * @param boolean $new_phase
+ *   A boolean, set to FALSE if calling drupal_bootstrap from inside a
+ *   function called from drupal_bootstrap (recursion).
+ *
+ * @return int
+ *   The most recently completed phase.
+ *
+ * @see drupal_bootstrap()
+ */
+function js_bootstrap($phase = NULL, $new_phase = TRUE) {
+  // If we have a bootstrap level greater or equal to language initialization,
+  // we need to update path, because otherwise path initialization will fail.
+  if ($phase >= DRUPAL_BOOTSTRAP_LANGUAGE) {
+    js_update_path();
+  }
+  return drupal_bootstrap($phase, $new_phase);
+}
+
+/**
+ * Updates the request path after that the JS prefixes has been stripped.
+ */
+function js_update_path() {
+  global $_js;
+  static $processed;
+  if (!$processed) {
+    $processed = TRUE;
+    $path = implode('/', $_js['args']);
+    $_GET['q'] = $path;
+    if (isset($_SERVER['REQUEST_URI'])) {
+      $_SERVER['REQUEST_URI'] = '/' . $path;
+    }
+    else {
+      if (isset($_SERVER['argv'])) {
+        $_SERVER['argv'][0] = $path;
+      }
+      elseif (isset($_SERVER['QUERY_STRING'])) {
+        $_SERVER['QUERY_STRING'] = 'q=' . $path;
+      }
+    }
+  }
 }
 
 /**
@@ -378,7 +425,7 @@ function js_get_callback($module = NULL, $callback = NULL, $reset = FALSE) {
       // after a cache clear. This single request may take longer, but Drupal
       // must be fully bootstrapped to detect all hook implementations.
       if ($_js) {
-        drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+        js_bootstrap(DRUPAL_BOOTSTRAP_FULL);
       }
       $hook = 'js_info';
       foreach (module_implements($hook, FALSE, $reset) as $_module) {
