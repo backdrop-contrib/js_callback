@@ -97,6 +97,11 @@ function js_deliver_json($callback_result) {
   drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
   drupal_add_http_header('Content-Length', strlen($output));
 
+  // Add the AJAX verification header, when the AJAX backend is loaded.
+  if (function_exists('ajax_set_verification_header')) {
+    ajax_set_verification_header();
+  }
+
   // Print output.
   print $output;
 
