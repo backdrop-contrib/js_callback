@@ -459,6 +459,7 @@ function js_get_callback($module = NULL, $callback = NULL, $reset = FALSE) {
             'process request' => TRUE,
             'skip init' => FALSE,
             'token' => TRUE,
+            'xhprof' => FALSE,
             'xss' => TRUE,
           );
         }

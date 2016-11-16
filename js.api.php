@@ -58,6 +58,15 @@
  *     proper token validation against the authenticated user. It is strongly
  *     recommended that this is not disabled, otherwise your site will be
  *     susceptible to CSRF attacks and be considered "insecure".
+ *   - xhprof: (optional) Flag indicating whether to output the called functions
+ *     or methods used in the request determined by XHProf. Note: enabling this
+ *     property to TRUE will automatically increase the callback's bootstrap
+ *     level to DRUPAL_BOOTSTRAP_FULL. This will allow all enabled modules and
+ *     includes to be loaded so the callback can succeed. This property is only
+ *     intended to be used for debugging purposes since it will always print out
+ *     the used functions via drupal_set_message(). It also requires the
+ *     xhprof_enable() and xhprof_disable() functions to be defined (which can
+ *     be provided by the XHProf PHP extension).
  *   - xss: (optional) Filters data in drupal_deliver_json() before it's sent to
  *     browser. It is strongly recommended that this is not disabled, otherwise
  *     your site will be susceptible to XSS attacks and be considered

@@ -14,6 +14,13 @@
  *   The results of the callback.
  */
 function js_callback_execute(array $info) {
+  $xhprof = !empty($info['xhprof']) && function_exists('xhprof_enable') && function_exists('xhprof_disable');
+
+  // If callback is being profiled, a full bootstrap is required.
+  if ($xhprof) {
+    $info['bootstrap'] = DRUPAL_BOOTSTRAP_FULL;
+  }
+
   // Bootstrap the callback to minimal requirements.
   js_callback_bootstrap($info);
 
@@ -29,13 +36,22 @@ function js_callback_execute(array $info) {
   }
   // Ensure callback function exists and can be invoked.
   elseif (!empty($info['callback function']) || function_exists($info['callback function'])) {
-    $callback_result = call_user_func_array($info['callback function'], $info['callback arguments']);
-  }
+    if ($xhprof) {
+      xhprof_enable(0, array('ignored_functions' =>  array('call_user_func', 'call_user_func_array')));
+    }
 
-  // Enforce sensitization of the result if the "xss" variable is not
-  // explicitly set to a boolean of FALSE.
-  if ($info['xss'] !== FALSE) {
-    $callback_result = js_callback_filter_xss($callback_result);
+    // Execute the callback.
+    $callback_result = call_user_func_array($info['callback function'], $info['callback arguments']);
+
+    if ($xhprof) {
+      drupal_set_message('XHProf results:<ul><li>' . implode('</li><li>', array_keys(xhprof_disable())) . '</li></ul>');
+    }
+
+    // Enforce sensitization of the result if the "xss" variable is not
+    // explicitly set to a boolean of FALSE.
+    if ($info['xss'] !== FALSE) {
+      $callback_result = js_callback_filter_xss($callback_result);
+    }
   }
 
   return $callback_result;
