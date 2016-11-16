@@ -56,6 +56,12 @@ function js_library() {
       drupal_get_path('module', 'js') . '/js.js' => array(
         'weight' => -100,
       ),
+      0 => array(
+        'type' => 'setting',
+        'data' => array(
+          'jsEndpoint' => variable_get('js_endpoint', 'js'),
+        ),
+      ),
     ),
     'dependencies' => array(
       array('system', 'jquery'),
@@ -211,14 +217,17 @@ function js_execute_request() {
   // Retrieve arguments for the current request.
   $_js['args'] = explode('/', $_GET['q']);
 
+  // Determine the JS "endpoint".
+  $endpoint = variable_get('js_endpoint', 'js');
+
   // Determine if there is a language prefix in the path.
   $_js['lang'] = FALSE;
-  if (!empty($_js['args'][0]) && !empty($_js['args'][1]) && $_js['args'][1] === 'js') {
+  if (!empty($_js['args'][0]) && !empty($_js['args'][1]) && $_js['args'][1] === $endpoint) {
     $_js['lang'] = check_plain(array_shift($_js['args']));
   }
 
-  // Remove the 'js' argument.
-  if (!empty($_js['args'][0]) && $_js['args'][0] === 'js') {
+  // Remove the endpoint argument.
+  if (!empty($_js['args'][0]) && $_js['args'][0] === $endpoint) {
     array_shift($_js['args']);
   }
 

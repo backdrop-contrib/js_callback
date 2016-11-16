@@ -89,7 +89,7 @@
   var JsAjaxBehaviors = function (type, event, jqXHR, options) {
     var JS = window.JS;
     // Ensure on JS module requests are processed.
-    if (!!options.url.match(new RegExp('^' + Drupal.settings.basePath + Drupal.settings.pathPrefix + 'js'))) {
+    if (!!options.url.match(new RegExp('^' + Drupal.settings.basePath + Drupal.settings.pathPrefix + (Drupal.settings.jsEndpoint || 'js')))) {
       // Older versions of jQuery do not have jqXHR.responseJSON, we must parse
       // the responseText manually.
       var json = options.dataType === 'json' && jqXHR.responseText && $.parseJSON(jqXHR.responseText) || {};
