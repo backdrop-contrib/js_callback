@@ -360,7 +360,7 @@
     var data = $.extend(true, {
       js_module: module,
       js_callback: callback,
-      js_token: (module && callback && Drupal.settings.js && Drupal.settings.js.tokens && Drupal.settings.js.tokens[module + '-' + callback]) || null
+      js_token: (module && callback && Drupal.settings.js && Drupal.settings.js.tokens && Drupal.settings.js.tokens[module + '-' + callback]) || ''
     }, options.data);
     JS.ajax($.extend(true, {
       type: 'POST',
