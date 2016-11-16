@@ -1,8 +1,6 @@
 <?php
 /**
  * @file
- * js.api.php
- *
  * This file contains no working PHP code; it exists to provide documentation
  * for this module's API.
  */
@@ -98,8 +96,40 @@ function hook_js_info() {
 /**
  * Alter allowed tags used in XSS filtering. Uses filter_xss_admin() defaults.
  *
+ * @param array $allowed_tags
+ *   An array of allowed HTML element tag names, passed by reference.
+ *
  * @see filter_xss_admin()
  */
 function hook_js_callback_filter_xss_alter(array &$allowed_tags = array()) {
   $allowed_tags[] = 'button';
+}
+
+/**
+ * A callback hook.
+ *
+ * @param mixed ...$args
+ *   One or more variables that match the snake cased parameters passed in the
+ *   request. This is dynamically processed, so if the variable name defined in
+ *   the callback's signature does not match any of the parameters passed in
+ *   the request, then it will be ignored and passed to the $data parameter.
+ * @param array $data
+ *   The array of parameters that were passed in the request, but not
+ *   automatically matched from the callback's signature.
+ *
+ * @return array|int
+ *   An array of JSON data or a constant representing an internal menu status:
+ *   - JS_MENU_NOT_FOUND
+ *   - JS_MENU_ACCESS_DENIED
+ *   - JS_MENU_SITE_OFFLINE
+ *   - JS_MENU_SITE_ONLINE
+ *
+ * @see hook_js_info()
+ * @see js_callback_process_request()
+ * @see js_http_response()
+ */
+function MODULE_js_callback_CALLBACK($args, $data) {
+  $json = array();
+  $json['content'] = '<p>My content</p>';
+  return $json;
 }

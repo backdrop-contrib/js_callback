@@ -1,5 +1,7 @@
 (function (window, $, undefined) {
 
+  var version = $.fn.jquery.split('.').map(parseFloat);
+
   /**
    * Method for executing JS callback requests; wraps $.ajax().
    *
@@ -38,16 +40,30 @@
     }, this.options);
 
     // Merge in trigger element data attributes as "data" to be passed.
-    if (this.options.$trigger.length) {
-      var
-        i,
-        data = this.options.$trigger.data(),
-        ignoreData = this.options.$trigger.data('js-ignore-data') || this.options.jsIgnoreData || [];
-      for (i in data) {
-        if (data.hasOwnProperty(i)) {
-          if ($.inArray(i, ignoreData) !== -1) {
-            delete data[i];
-          }
+    if (this.options.$trigger[0]) {
+      var data = $.extend({}, this.options.$trigger.data());
+
+      // Remove any bound jQuery events.
+      if (version[0] === 1 && version[1] < 8) {
+        delete data.events;
+      }
+
+      // Handle various jQuery versions what is returned from $.fn.data().
+      var jsRegExp = /(js)[_-]?([A-Za-z]+)/;
+      var ignoreData = [].concat(this.options.$trigger.data('js-ignore-data') || this.options.jsIgnoreData || []);
+      for (var i in data) {
+        if (!data.hasOwnProperty(i)) {
+          continue;
+        }
+        var match = i.match(jsRegExp);
+        if (match) {
+          var key = (match[1] + '_' + match[2]).toLowerCase();
+          var value = data[i];
+          delete data[i];
+          data[key] = value;
+        }
+        if ($.inArray(i, ignoreData) !== -1) {
+          delete data[i];
         }
       }
       this.options.data = $.extend(true, this.options.data, data);
@@ -265,22 +281,34 @@
      *   The object to iterate over.
      */
     snakeCaseObject: function (obj) {
-      for (var key in obj) {
-        if (obj.hasOwnProperty(key)) {
-          if ($.isFunction(obj[key])) {
-            delete obj[key];
-          }
-          else if (!$.isPlainObject(obj[key]) && !$.isArray(obj[key])) {
-            obj[key] = Drupal.checkPlain(obj[key]);
-          }
-          var snakeCaseKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-          if (snakeCaseKey !== key) {
-            var value = obj[key];
-            delete obj[key];
-            obj[snakeCaseKey] = value;
-          }
+      var self = this;
+
+      $.each(obj, function (key, value) {
+        // Remove functions entirely.
+        if ($.isFunction(value)) {
+          value = null;
+          delete obj[key];
+          return;
         }
-      }
+
+        // Type cast key to a string.
+        key = (key + '');
+
+        // Snake case the key, if necessary.
+        var snakeCaseKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+        if (snakeCaseKey !== key) {
+          delete obj[key];
+          key = snakeCaseKey;
+        }
+
+        // Sanitize the value, recurse if an object or array.
+        value = $.isPlainObject(value) || $.isArray(value) ? self.snakeCaseObject(value) : Drupal.checkPlain(obj[key]);
+
+        // Store the value.
+        obj[key] = value;
+      });
+
+      return obj;
     },
 
     /**
