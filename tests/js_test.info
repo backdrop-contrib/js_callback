@@ -1,6 +1,0 @@
-name = JavaScript callback handler tests
-description = Tests for the JS module.
-package = Performance
-core = "7.x"
-
-files[] = js_test.test
