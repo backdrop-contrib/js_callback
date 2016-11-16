@@ -115,6 +115,122 @@ function js_js_info() {
 }
 
 /**
+ * Implements hook_js_server_info().
+ *
+ * {@inheritdoc}
+ */
+function js_js_server_info() {
+  $base_path = str_replace('/', '\\/', base_path());
+  $endpoint = variable_get('js_endpoint', 'js');
+
+  $header = array(
+    '###',
+    '### Support for https://www.drupal.org/project/js module.',
+    '###',
+  );
+
+  // Apache.
+  $servers['apache'] = array(
+    'label' => 'Apache',
+    'description' => t('Add the above lines before any existing rewrite rules inside this site\'s Apache <code>.htaccess</code> file.'),
+    'rewrite' => $header,
+  );
+  $servers['apache']['rewrite'][] = "RewriteCond %{REQUEST_URI} ^$base_path([a-z]{2}\\/)?$endpoint\\/.*";
+  $servers['apache']['rewrite'][] = "RewriteRule ^(.*)$ js.php?q=$1 [L,QSA]";
+  $servers['apache']['rewrite'][] = "RewriteCond %{QUERY_STRING} (^|&)q=((\\/)?[a-z]{2})?(\\/)?$endpoint\\/.*";
+  $servers['apache']['rewrite'][] = "RewriteRule .* js.php [L]";
+
+  // Nginx.
+  $servers['nginx'] = array(
+    'label' => 'Nginx',
+    'description' => t('Add the above lines before any existing rewrite rules inside this site\'s Nginx <code>server { }</code> block.'),
+    'rewrite' => $header,
+  );
+  $servers['nginx']['rewrite'][] = "location ^~ /$endpoint/ {";
+  $servers['nginx']['rewrite'][] = "  location ~* ^/$endpoint/ {";
+  $servers['nginx']['rewrite'][] = "    if (\$is_bot) {";
+  $servers['nginx']['rewrite'][] = "      return 403;";
+  $servers['nginx']['rewrite'][] = "    }";
+  $servers['nginx']['rewrite'][] = "    rewrite ^/(.*)$ /js.php?q=$1 last;";
+  $servers['nginx']['rewrite'][] = "  }";
+  $servers['nginx']['rewrite'][] = "}";
+
+  return $servers;
+}
+
+/**
+ * Provides server information provided by modules.
+ *
+ * @param string $server
+ *   The name of a server to retrieve.
+ * @param bool $reset
+ *   For internal use only: Whether to force the stored list of hook
+ *   implementations to be regenerated (such as after enabling a new module,
+ *   before processing hook_enable).
+ *
+ * @return array|false
+ *   If $server is provided the info array for the specified server is returned
+ *   or FALSE if it's not defined. If no parameters are provided, all modules
+ *   that provided server information is returned.
+ */
+function js_server_info($server = NULL, $reset = FALSE) {
+  // Use the advanced drupal_static() pattern, since this has the potential to
+  // be called quite often on a single page request.
+  static $drupal_static_fast;
+  if (!isset($drupal_static_fast)) {
+    $drupal_static_fast['servers'] = &drupal_static(__FUNCTION__);
+  }
+  $servers = &$drupal_static_fast['servers'];
+
+  // Populate servers. Using cache if possible or rebuild if necessary.
+  if ($reset || !isset($servers)) {
+    $servers = array();
+    $cid = 'js:servers';
+    if (!$reset && ($cache = cache_get($cid)) && $cache->data) {
+      $servers = $cache->data;
+    }
+    else {
+      $hook = 'js_server_info';
+      foreach (module_implements($hook, FALSE, $reset) as $module) {
+        $results = module_invoke($module, $hook);
+        // Iterate over each module and retrieve the server info.
+        foreach ($results as $name => $info) {
+          $servers[$name] = (array) $info;
+          // Provide defaults if the module didn't provide them.
+          $servers[$name] += array(
+            'description' => '',
+            'label' => $name,
+            'regexp' => "/$name/i",
+            'rewrite' => '',
+          );
+
+          // Ensure "name" and "module" are always provided by discovery.
+          $servers[$name]['name'] = $name;
+          $servers[$name]['module'] = $module;
+
+          // Convert "rewrite" to strings if it's an array.
+          if (is_array($servers[$name]['rewrite'])) {
+            $servers[$name]['rewrite'] = implode("\n", $servers[$name]['rewrite']);
+          }
+        }
+      }
+      // Invokes hook_js_server_info_alter(). Allow modules to alter the
+      // server info before it's cached in the database.
+      drupal_alter($hook, $servers);
+      cache_set($cid, $servers);
+    }
+  }
+
+  // Return a specific callback for a module.
+  if (isset($server)) {
+    return !empty($servers[$server]) ? $servers[$server] : FALSE;
+  }
+
+  // Return all server info implemented by any module.
+  return $servers;
+}
+
+/**
  * Implements MODULE_js_callback_CALLBACK().
  *
  * Callback for processing form POST data. Because form data is sent via POST,

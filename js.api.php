@@ -93,6 +93,46 @@ function hook_js_info() {
   return $callbacks;
 }
 
+
+/**
+ * Register JS server information.
+ *
+ * @return array
+ *   An associative array of servers where the key indicates the machine name of
+ *   the server. The value of each server is also an associative array
+ *   containing the following possible keys:
+ *   - description: (optional) The human readable description for the server.
+ *   - label: (optional) The human readable label for the server. Defaults to
+ *     the machine name if none is provided.
+ *   - regexp: (optional) A regular expression used to match against the
+ *     $_SERVER['SERVER_SOFTWARE'] value.
+ *   - rewrite: (optional) A string or an array of strings to use for
+ *     constructing the rewrite rules specific to the server.
+ */
+function hook_js_server_info() {
+  $base_path = str_replace('/', '\\/', base_path());
+  $endpoint = variable_get('js_endpoint', 'js');
+
+  $header = array(
+    '###',
+    '### Support for https://www.drupal.org/project/js module.',
+    '###',
+  );
+
+  // Apache.
+  $servers['apache'] = array(
+    'label' => 'Apache',
+    'description' => t('Add the above lines before any existing rewrite rules inside this site\'s Apache <code>.htaccess</code> file.'),
+    'rewrite' => $header,
+  );
+  $servers['apache']['rewrite'][] = "RewriteCond %{REQUEST_URI} ^$base_path([a-z]{2}\\/)?$endpoint\\/.*";
+  $servers['apache']['rewrite'][] = "RewriteRule ^(.*)$ js.php?q=$1 [L,QSA]";
+  $servers['apache']['rewrite'][] = "RewriteCond %{QUERY_STRING} (^|&)q=((\\/)?[a-z]{2})?(\\/)?$endpoint\\/.*";
+  $servers['apache']['rewrite'][] = "RewriteRule .* js.php [L]";
+
+  return $servers;
+}
+
 /**
  * Alter allowed tags used in XSS filtering. Uses filter_xss_admin() defaults.
  *
