@@ -67,6 +67,8 @@ function js_example_js_info() {
  */
 function js_example_form($form, $form_state) {
   $form['#attached']['library'][] = array('js', 'js');
+  $form['#attached']['js'][drupal_get_path('module', 'js_example') . '/js_example.js'] = array();
+
   $form['intro'] = array(
     '#markup' => t('<p>This example page will show you examples on how each of these callbacks work using the JS module API.</p>'),
   );
