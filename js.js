@@ -302,7 +302,7 @@
         }
 
         // Sanitize the value, recurse if an object or array.
-        value = $.isPlainObject(value) || $.isArray(value) ? self.snakeCaseObject(value) : Drupal.checkPlain(obj[key]);
+        value = $.isPlainObject(value) || $.isArray(value) ? self.snakeCaseObject(value) : Drupal.checkPlain(value);
 
         // Store the value.
         obj[key] = value;
