@@ -120,8 +120,9 @@ function js_js_info() {
  * {@inheritdoc}
  */
 function js_js_server_info() {
-  $base_path = str_replace('/', '\\/', base_path());
-  $endpoint = variable_get('js_endpoint', 'js');
+  $base_path = preg_quote(base_path());
+  $endpoint = preg_quote(variable_get('js_endpoint', 'js'));
+  $regexp = '(?:[a-z]{2}(?:-[A-Za-z]{2,4})?/)?(?:' . $endpoint . '|' . $endpoint . '/.*)';
 
   $header = array(
     '###',
@@ -135,10 +136,13 @@ function js_js_server_info() {
     'description' => t('Add the above lines before any existing rewrite rules inside this site\'s Apache <code>.htaccess</code> file.'),
     'rewrite' => $header,
   );
-  $servers['apache']['rewrite'][] = "RewriteCond %{REQUEST_URI} ^$base_path([a-z]{2}\\/)?$endpoint\\/.*";
-  $servers['apache']['rewrite'][] = "RewriteRule ^(.*)$ js.php?q=$1 [L,QSA]";
-  $servers['apache']['rewrite'][] = "RewriteCond %{QUERY_STRING} (^|&)q=((\\/)?[a-z]{2})?(\\/)?$endpoint\\/.*";
-  $servers['apache']['rewrite'][] = "RewriteRule .* js.php [L]";
+  $servers['apache']['rewrite'][] = '###';
+  $servers['apache']['rewrite'][] = '### Support for https://www.drupal.org/project/js module.';
+  $servers['apache']['rewrite'][] = '###';
+  $servers['apache']['rewrite'][] = 'RewriteCond %{REQUEST_URI} ^' . str_replace('/', '\\/', $base_path) . str_replace('/', '\\/', $regexp) . '$';
+  $servers['apache']['rewrite'][] = 'RewriteRule ^(.*)$ js.php?q=$1 [L,QSA]';
+  $servers['apache']['rewrite'][] = 'RewriteCond %{QUERY_STRING} (^|&)q=' . str_replace('/', '\\/', $regexp);
+  $servers['apache']['rewrite'][] = 'RewriteRule .* js.php [L]';
 
   // Nginx.
   $servers['nginx'] = array(
@@ -146,16 +150,27 @@ function js_js_server_info() {
     'description' => t('Add the above lines before any existing rewrite rules inside this site\'s Nginx <code>server { }</code> block.'),
     'rewrite' => $header,
   );
-
-  $servers['nginx']['rewrite'][] = "location / {";
-  $servers['nginx']['rewrite'][] = "  if (\$is_bot) {";
-  $servers['nginx']['rewrite'][] = "    return 403;";
-  $servers['nginx']['rewrite'][] = "  }";
-  $servers['nginx']['rewrite'][] = "  rewrite ^$base_path([a-z]{2}\\/)?$endpoint\\/.* /js.php?q=$1 break;";
-  $servers['nginx']['rewrite'][] = "  if (\$query_string ~ \"(^|&)q=((\\/)?[a-z]{2})?(\\/)?$endpoint\\/.*\"){";
-  $servers['nginx']['rewrite'][] = "    rewrite ^(.*)$ /js.php break;";
-  $servers['nginx']['rewrite'][] = "  }";
-  $servers['nginx']['rewrite'][] = "}";
+  $servers['nginx']['rewrite'][] = '### PHP-FPM (using https://github.com/perusio/drupal-with-nginx)';
+  $servers['nginx']['rewrite'][] = '###';
+  $servers['nginx']['rewrite'][] = '### 1. Copy `apps/drupal/fastcgi_drupal.conf` to `apps/drupal/fastcgi_js.conf`.';
+  $servers['nginx']['rewrite'][] = '### 2. Inside `fastcgi_js.conf`, rename all cases of `index.php` to `js.php`.';
+  $servers['nginx']['rewrite'][] = '###';
+  $servers['nginx']['rewrite'][] = 'location ~* "^' . $base_path . $regexp . '$" {';
+  $servers['nginx']['rewrite'][] = '  rewrite ^/(.*)$ /js.php?q=$1 last;';
+  $servers['nginx']['rewrite'][] = '}';
+  $servers['nginx']['rewrite'][] = 'location ^~ /js.php {';
+  $servers['nginx']['rewrite'][] = '  tcp_nopush off;';
+  $servers['nginx']['rewrite'][] = '  keepalive_requests 0;';
+  $servers['nginx']['rewrite'][] = '  access_log off;';
+  $servers['nginx']['rewrite'][] = '  try_files $uri =404; ### check for existence of php file first';
+  $servers['nginx']['rewrite'][] = '  include apps/drupal/fastcgi_js.conf;';
+  $servers['nginx']['rewrite'][] = '  fastcgi_pass phpcgi;';
+  $servers['nginx']['rewrite'][] = '}';
+  $servers['nginx']['rewrite'][] = '';
+  $servers['nginx']['rewrite'][] = '### Non-clean URLs (query based, only uncomment if needed).';
+  $servers['nginx']['rewrite'][] = '# if ($query_string ~ "(?:^|&)q=(' . $regexp . ')") {';
+  $servers['nginx']['rewrite'][] = '#  rewrite ^' . $base_path . '(.*)$ /js.php?q=$1 last;';
+  $servers['nginx']['rewrite'][] = '#}';
 
   return $servers;
 }
