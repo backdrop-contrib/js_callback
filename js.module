@@ -136,9 +136,6 @@ function js_js_server_info() {
     'description' => t('Add the above lines before any existing rewrite rules inside this site\'s Apache <code>.htaccess</code> file.'),
     'rewrite' => $header,
   );
-  $servers['apache']['rewrite'][] = '###';
-  $servers['apache']['rewrite'][] = '### Support for https://www.drupal.org/project/js module.';
-  $servers['apache']['rewrite'][] = '###';
   $servers['apache']['rewrite'][] = 'RewriteCond %{REQUEST_URI} ^' . str_replace('/', '\\/', $base_path) . str_replace('/', '\\/', $regexp) . '$';
   $servers['apache']['rewrite'][] = 'RewriteRule ^(.*)$ js.php?q=$1 [L,QSA]';
   $servers['apache']['rewrite'][] = 'RewriteCond %{QUERY_STRING} (^|&)q=' . str_replace('/', '\\/', $regexp);
