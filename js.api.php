@@ -51,11 +51,15 @@
  *     information.
  *   - skip init: (optional) Set to TRUE to skip the init hooks. Warning:
  *     This might cause unwanted behavior and should only be disabled with care.
- *   - token: (optional) Use tokens to prevent CSRF attacks. When enabled, the
- *     minimum bootstrap level must be DRUPAL_BOOTSTRAP_SESSION to ensure
- *     proper token validation against the authenticated user. It is strongly
- *     recommended that this is not disabled, otherwise your site will be
- *     susceptible to CSRF attacks and be considered "insecure".
+ *   - token: (optional) Generates a token to prevent CSRF attacks for
+ *     authenticated users. When enabled, the minimum bootstrap level will be
+ *     DRUPAL_BOOTSTRAP_SESSION to ensure proper token validation against the
+ *     authenticated user. If the callback is only accessible to authenticated
+ *     users, it is strongly recommended that this is not disabled, otherwise
+ *     your site could potentially be susceptible to CSRF attacks. If the
+ *     callback needs to support both anonymous and authenticated users, then
+ *     this should be disable and the responsibility of checking request
+ *     validity falls to the callback itself.
  *   - xhprof: (optional) Flag indicating whether to output the called functions
  *     or methods used in the request determined by XHProf. Note: enabling this
  *     property to TRUE will automatically increase the callback's bootstrap
