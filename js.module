@@ -146,12 +146,14 @@ function js_js_server_info() {
     'description' => t('Add the above lines before any existing rewrite rules inside this site\'s Nginx <code>server { }</code> block.'),
     'rewrite' => $header,
   );
-  $servers['nginx']['rewrite'][] = "location ^~ /$endpoint/ {";
-  $servers['nginx']['rewrite'][] = "  location ~* ^/$endpoint/ {";
-  $servers['nginx']['rewrite'][] = "    if (\$is_bot) {";
-  $servers['nginx']['rewrite'][] = "      return 403;";
-  $servers['nginx']['rewrite'][] = "    }";
-  $servers['nginx']['rewrite'][] = "    rewrite ^/(.*)$ /js.php?q=$1 last;";
+
+  $servers['nginx']['rewrite'][] = "location / {";
+  $servers['nginx']['rewrite'][] = "  if (\$is_bot) {";
+  $servers['nginx']['rewrite'][] = "    return 403;";
+  $servers['nginx']['rewrite'][] = "  }";
+  $servers['nginx']['rewrite'][] = "  rewrite ^$base_path([a-z]{2}\\/)?$endpoint\\/.* /js.php?q=$1 break;";
+  $servers['nginx']['rewrite'][] = "  if (\$query_string ~ \"(^|&)q=((\\/)?[a-z]{2})?(\\/)?$endpoint\\/.*\"){";
+  $servers['nginx']['rewrite'][] = "    rewrite ^(.*)$ /js.php break;";
   $servers['nginx']['rewrite'][] = "  }";
   $servers['nginx']['rewrite'][] = "}";
 
