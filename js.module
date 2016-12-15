@@ -329,7 +329,8 @@ function _js_error_handler($error_level, $message) {
       '%file' => $caller['file'],
       '%line' => $caller['line'],
       'severity_level' => $severity_level,
-    ), $error_level == E_ERROR || $error_level == E_RECOVERABLE_ERROR);
+       // Drupal treats recoverable errors as fatals.
+    ), $error_level == E_RECOVERABLE_ERROR);
   }
 }
 
@@ -370,6 +371,24 @@ function _js_exception_handler(\Exception $exception) {
 }
 
 /**
+ * Provides custom PHP fatal error handling.
+ */
+function _js_fatal_error_handler() {
+  if ($error = error_get_last()) {
+    require_once DRUPAL_ROOT . '/includes/errors.inc';
+    _js_log_php_error(array(
+      '%type' => 'Fatal Error',
+      // The standard PHP error handler considers that the error messages
+      // are HTML. Mimic this behavior here.
+      '!message' => filter_xss_admin($error['message']),
+      '%file' => $error['file'],
+      '%line' => $error['line'],
+      'severity_level' => WATCHDOG_ERROR,
+    ), TRUE);
+  }
+}
+
+/**
  * Logs a PHP error or exception and displays the error in fatal cases.
  *
  * @param $error
@@ -385,7 +404,12 @@ function _js_log_php_error($error, $fatal = FALSE) {
 
   // Display the error to the user, if it should.
   if (error_displayable($error)) {
-    drupal_set_message(t('%type: !message in %function (line %line of %file).', $error), 'error');
+    if (!isset($error['%function'])) {
+      drupal_set_message(t('%type: !message (line %line of %file).', $error), 'error');
+    }
+    else {
+      drupal_set_message(t('%type: !message in %function (line %line of %file).', $error), 'error');
+    }
   }
 
   // If fatal, deliver an internal server error response.
@@ -403,10 +427,14 @@ function js_execute_request() {
   global $_js;
   global $conf;
 
+  // Immediately start capturing any output.
+  ob_start();
+
   // Override error and exception handlers to capture output.
   if (empty($conf['js_silence_php_errors'])) {
     set_error_handler('_js_error_handler');
     set_exception_handler('_js_exception_handler');
+    register_shutdown_function('_js_fatal_error_handler');
   }
 
   // Memcache requires an additional bootstrap phase to access variables.
@@ -457,6 +485,8 @@ function js_execute_request() {
 
   // Load common functions used for all requests.
   module_load_include('inc', 'js', 'includes/common');
+
+  $info = NULL;
 
   // Set the default request result to JS_MENU_NOT_FOUND. The responsibility
   // of changing the results falls to the request handler.
@@ -520,16 +550,32 @@ function js_execute_request() {
   }
 
   // Deliver the result.
-  js_deliver($request_result);
+  js_deliver($request_result, $info);
 }
 
 /**
  * Sends content to the browser via the delivery callback.
  *
- * @param mixed $content
+ * @param mixed $result
  *   The content to pass to the delivery callback.
+ * @param array $info
+ *   The callback definition array, may not be set.
  */
-function js_deliver($content) {
+function js_deliver($result, array $info = NULL) {
+  // Capture buffered content.
+  $captured = ob_get_clean();
+
+  // If the callback definition array was not provided or the callback has
+  // explicitly disabled "capture", then allow loaded modules add the captured
+  // output to the result via hook_js_captured_content_alter().
+  if (!isset($info) || !empty($info['capture'])) {
+    drupal_alter('js_captured_content', $result, $captured);
+  }
+  // Otherwise, just print the captured output before hand.
+  else {
+    print $captured;
+  }
+
   // Get the delivery callback to be used.
   $delivery_callback = js_delivery_callback();
 
@@ -542,7 +588,7 @@ function js_deliver($content) {
   // Deliver the results. The delivery callback is responsible for setting the
   // appropriate headers, handling the result returned from the callback and
   // exiting the script properly.
-  call_user_func_array($delivery_callback, array($content));
+  call_user_func_array($delivery_callback, array($result, $info));
 }
 
 /**

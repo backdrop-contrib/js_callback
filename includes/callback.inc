@@ -36,11 +36,6 @@ function js_callback_execute(array $info) {
   }
   // Ensure callback function exists and can be invoked.
   elseif (!empty($info['callback function']) || function_exists($info['callback function'])) {
-    // Start capturing printed content.
-    if ($info['capture']) {
-      ob_start();
-    }
-
     if ($xhprof) {
       xhprof_enable(0, array('ignored_functions' =>  array('call_user_func', 'call_user_func_array')));
     }
@@ -50,14 +45,6 @@ function js_callback_execute(array $info) {
 
     if ($xhprof) {
       drupal_set_message('XHProf results:<ul><li>' . implode('</li><li>', array_keys(xhprof_disable())) . '</li></ul>');
-    }
-
-    // Capture buffered content. Don't automatically add it to the result
-    // because its format cannot be determined here and it could also
-    // potentially and unintentionally leak sensitive information. Instead, let
-    // loaded modules add to the result via hook_js_captured_content_alter().
-    if ($info['capture'] && ($captured = ob_get_clean())) {
-      drupal_alter('js_captured_content', $result, $captured);
     }
 
     // Enforce sensitization of the result if the "xss" variable is not
