@@ -305,15 +305,112 @@ function js_pre_render_element($element) {
 }
 
 /**
- * Loads the requested module and executes the requested callback.
+ * Provides custom PHP error handling.
  *
- * @return mixed
- *   The callback function's return value or one of the JS_* constants.
+ * @param $error_level
+ *   The level of the error raised.
+ * @param $message
+ *   The error message.
+ */
+function _js_error_handler($error_level, $message) {
+  if ($error_level & error_reporting()) {
+    require_once DRUPAL_ROOT . '/includes/errors.inc';
+
+    $types = drupal_error_levels();
+    list($severity_msg, $severity_level) = $types[$error_level];
+    $caller = _drupal_get_last_caller(debug_backtrace());
+
+    _js_log_php_error(array(
+      '%type' => isset($types[$error_level]) ? $severity_msg : 'Unknown error',
+      // The standard PHP error handler considers that the error messages
+      // are HTML. Mimic this behavior here.
+      '!message' => filter_xss_admin($message),
+      '%function' => $caller['function'],
+      '%file' => $caller['file'],
+      '%line' => $caller['line'],
+      'severity_level' => $severity_level,
+    ), $error_level == E_ERROR || $error_level == E_RECOVERABLE_ERROR);
+  }
+}
+
+/**
+ * Provides custom PHP exception handling.
+ *
+ * Uncaught exceptions are those not enclosed in a try/catch block. They are
+ * always fatal: the execution of the script will stop as soon as the exception
+ * handler exits.
+ *
+ * @param $exception
+ *   The exception object that was thrown.
+ */
+function _js_exception_handler(\Exception $exception) {
+  require_once DRUPAL_ROOT . '/includes/errors.inc';
+  try {
+    _js_log_php_error(_drupal_decode_exception($exception), TRUE);
+  }
+  catch (Exception $exception2) {
+    // Another uncaught exception was thrown while handling the first one.
+    // If we are displaying errors, then do so with no possibility of a further
+    // uncaught exception being thrown.
+    $message = '<h1>Additional uncaught exception thrown while handling exception.</h1>';
+    $message .= '<h2>Original</h2><p>' . _drupal_render_exception_safe($exception) . '</p>';
+    $message .= '<h2>Additional</h2><p>' . _drupal_render_exception_safe($exception2) . '</p>';
+    $caller = _drupal_get_last_caller(debug_backtrace());
+    _js_log_php_error(array(
+      '%type' => 'Unknown error',
+      // The standard PHP error handler considers that the error messages
+      // are HTML. Mimic this behavior here.
+      '!message' => filter_xss_admin($message),
+      '%function' => $caller['function'],
+      '%file' => $caller['file'],
+      '%line' => $caller['line'],
+      'severity_level' => WATCHDOG_ERROR,
+    ), TRUE);
+  }
+}
+
+/**
+ * Logs a PHP error or exception and displays the error in fatal cases.
+ *
+ * @param $error
+ *   An array with the following keys: %type, !message, %function, %file, %line
+ *   and severity_level. All the parameters are plain-text, with the exception
+ *   of !message, which needs to be a safe HTML string.
+ * @param $fatal
+ *   TRUE if the error is fatal.
+ */
+function _js_log_php_error($error, $fatal = FALSE) {
+  // Log the error immediately.
+  watchdog('php', '%type: !message in %function (line %line of %file).', $error, $error['severity_level']);
+
+  // Display the error to the user, if it should.
+  if (error_displayable($error)) {
+    drupal_set_message(t('%type: !message in %function (line %line of %file).', $error), 'error');
+  }
+
+  // If fatal, deliver an internal server error response.
+  if ($fatal) {
+    js_deliver(js_http_response(500));
+  }
+}
+
+
+/**
+ * Loads the requested module and executes the requested callback.
  */
 function js_execute_request() {
   // Provide a global JS variable that will be used through out the request.
   global $_js;
   global $conf;
+
+  // Start capturing any output.
+  ob_start();
+
+  // Override error and exception handlers to capture output.
+  if (empty($conf['js_silence_php_errors'])) {
+    set_error_handler('_js_error_handler');
+    set_exception_handler('_js_exception_handler');
+  }
 
   // Memcache requires an additional bootstrap phase to access variables.
   if (!empty($conf['cache_default_class']) && $conf['cache_default_class'] === 'MemCacheDrupal') {
@@ -425,6 +522,17 @@ function js_execute_request() {
     }
   }
 
+  // Deliver the result.
+  js_deliver($request_result);
+}
+
+/**
+ * Sends content to the browser via the delivery callback.
+ *
+ * @param mixed $content
+ *   The content to pass to the delivery callback.
+ */
+function js_deliver($content) {
   // Get the delivery callback to be used.
   $delivery_callback = js_delivery_callback();
 
@@ -437,7 +545,7 @@ function js_execute_request() {
   // Deliver the results. The delivery callback is responsible for setting the
   // appropriate headers, handling the result returned from the callback and
   // exiting the script properly.
-  call_user_func_array($delivery_callback, array($request_result));
+  call_user_func_array($delivery_callback, array($content));
 }
 
 /**
