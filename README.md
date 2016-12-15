@@ -90,11 +90,11 @@ There are a few variables that can be set in an appropriate `settings.php` file:
   ```
 - `js_silence_php_errors`: Prevents custom JS module PHP error and exception
   handlers from being invoked. By default, this variable is not set and the
-  JS module will automatically handle any PHP error or exceptions and display
-  them as error messages via `drupal_set_message()`:  
+  JS module will automatically handle any PHP error or exception and display
+  them (respecting the site's PHP error display configuration) as an error
+  type status message via `drupal_set_message()`. To disable this, use:  
   ```php
-  // Not enabled by default.
-  // $conf['js_silence_php_errors'] = TRUE;
+  $conf['js_silence_php_errors'] = TRUE;
   ```
 
 

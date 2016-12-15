@@ -28,33 +28,46 @@ function js_callback_execute(array $info) {
   js_callback_process_request($info);
 
   // By default, return JS_MENU_NOT_FOUND. This will be overridden below.
-  $callback_result = JS_MENU_NOT_FOUND;
+  $result = JS_MENU_NOT_FOUND;
 
   // Check callback access.
   if (!empty($info['access callback']) && !call_user_func_array($info['access callback'], $info['access arguments'])) {
-    $callback_result = JS_MENU_ACCESS_DENIED;
+    $result = JS_MENU_ACCESS_DENIED;
   }
   // Ensure callback function exists and can be invoked.
   elseif (!empty($info['callback function']) || function_exists($info['callback function'])) {
+    // Start capturing printed content.
+    if ($info['capture']) {
+      ob_start();
+    }
+
     if ($xhprof) {
       xhprof_enable(0, array('ignored_functions' =>  array('call_user_func', 'call_user_func_array')));
     }
 
     // Execute the callback.
-    $callback_result = call_user_func_array($info['callback function'], $info['callback arguments']);
+    $result = call_user_func_array($info['callback function'], $info['callback arguments']);
 
     if ($xhprof) {
       drupal_set_message('XHProf results:<ul><li>' . implode('</li><li>', array_keys(xhprof_disable())) . '</li></ul>');
     }
 
+    // Capture buffered content. Don't automatically add it to the result
+    // because its format cannot be determined here and it could also
+    // potentially and unintentionally leak sensitive information. Instead, let
+    // loaded modules add to the result via hook_js_captured_content_alter().
+    if ($info['capture'] && ($captured = ob_get_clean())) {
+      drupal_alter('js_captured_content', $result, $captured);
+    }
+
     // Enforce sensitization of the result if the "xss" variable is not
     // explicitly set to a boolean of FALSE.
     if ($info['xss'] !== FALSE) {
-      $callback_result = js_callback_filter_xss($callback_result);
+      $result = js_callback_filter_xss($result);
     }
   }
 
-  return $callback_result;
+  return $result;
 }
 
 /**

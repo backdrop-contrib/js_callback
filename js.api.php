@@ -14,9 +14,16 @@
  *   is also an associative array containing the following possible keys:
  *   - callback function: (optional) The function to invoke for this callback.
  *     If omitted, the default function name is: MODULE_js_callback_CALLBACK.
- *   - callback arguments: (optional) Select which arguments from the URL to
- *     pass to the callback. Starting with 0 with the js/[module] stripped from
- *     the path. Please note that 0 will contain the used callback.
+ *   - callback arguments: (optional) Internal use. Normally, you won't need
+ *     to assign any callback arguments as they will automatically be determined
+ *     based on the names of passed parameters and callback function signatures.
+ *     If set, these static values will be passed to the callback function
+ *     before anything else. To automatically "load" arguments, see the "load
+ *     arguments" and "process request" properties below.
+ *   - capture: (optional) Captures any printed output from the callback.
+ *     Normally a callback should return its content, not print it. By default
+ *     this property is enabled and will discard any printed output.
+ *     See: hook_js_captured_content_alter().
  *   - access callback: (optional) The function to invoke for determining
  *     access to the callback. If set, the minimum bootstrap level must be
  *     DRUPAL_BOOTSTRAP_SESSION to ensure proper access validation against the
@@ -112,17 +119,15 @@ function hook_js_info() {
  * right before it's sent to the browser; in the event that the captured output
  * is useful for some reason.
  *
- * @param mixed $data
- *   The data about to be sent to the browser, passed by reference.
- * @param string $type
- *   The type of data, e.g. 'json'.
+ * @param mixed $result
+ *   The result value from the callback, passed by reference.
  * @param string $captured
  *   The captured output.
  */
-function hook_js_captured_content_alter(&$data, $type, $captured) {
+function hook_js_captured_content_alter(&$result, $captured) {
   // Pass the captured output to the JSON array right before delivery.
-  if ($type === 'json') {
-    $data['captured'] = filter_xss_admin($captured);
+  if (js_delivery_callback() === 'js_deliver_json') {
+    $result['captured'] = filter_xss_admin($captured);
   }
 }
 

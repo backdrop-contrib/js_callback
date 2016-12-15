@@ -83,15 +83,6 @@ function js_deliver_json($callback_result) {
     $json['settings'] = $settings;
   }
 
-  // Clean out any printed content. We don't automatically add it to the JSON
-  // array because it could, potentially and unintentionally, leak sensitive
-  // information. Instead, we let the callback add what it needs, if any
-  // through hook_js_captured_content_alter().
-  if ($captured = ob_get_clean()) {
-    $context = array('type' => 'json', 'captured' => $captured);
-    drupal_alter('js_captured_content', $json, $context);
-  }
-
   // Convert the JSON array into a string.
   $output = drupal_json_encode($json);
 

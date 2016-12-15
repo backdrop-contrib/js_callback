@@ -403,9 +403,6 @@ function js_execute_request() {
   global $_js;
   global $conf;
 
-  // Start capturing any output.
-  ob_start();
-
   // Override error and exception handlers to capture output.
   if (empty($conf['js_silence_php_errors'])) {
     set_error_handler('_js_error_handler');
@@ -688,6 +685,7 @@ function js_get_callback($module = NULL, $callback = NULL, $reset = FALSE) {
             // Provide a standard function name to use if none is provided.
             'callback function' => $_module . '_js_callback_' . $_callback,
             'callback arguments' => array(),
+            'capture' => TRUE,
             'delivery callback' => 'js_deliver_json',
             'dependencies' => array(),
             'includes' => array(),
