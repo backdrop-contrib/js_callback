@@ -253,6 +253,9 @@ function js_callback_process_request(&$info) {
     }
   }
 
+  // Load argument callbacks.
+  $load_arguments = $info['load arguments'];
+
   // Retrieve the default parameters of the callback function.
   foreach (array('access', 'callback') as $type) {
     $data = $request_data;
@@ -263,23 +266,58 @@ function js_callback_process_request(&$info) {
     if (function_exists($function)) {
       $f = new ReflectionFunction($function);
       foreach ($f->getParameters() as $param) {
-        $default = NULL;
-        if ($param->isDefaultValueAvailable()) {
-          $default = $param->getDefaultValue();
+        // Determine if there's a default value.
+        $default = $param->isDefaultValueAvailable() ? $param->getDefaultValue() : NULL;
+
+        // Determine if callback parameter has been type hinted with a class.
+        if ($class = $param->getClass()) {
+          $default = array('class' => $class->getName(), 'default' => $default);
         }
+
+        // Set the default value.
         $parameters[$param->name] = $default;
+
+        // Give callback definitions a chance to completely disable autoloading.
+        if ($load_arguments !== FALSE && is_array($load_arguments)) {
+          // Automatically determine load function, if it wasn't explicitly set.
+          if (!isset($load_arguments[$param->name])) {
+            $load_callback = $param->name . '_load';
+            if (function_exists($load_callback)) {
+              $load_arguments[$param->name] = $load_callback;
+            }
+          }
+          // Otherwise, remove it if it's empty or not callable.
+          elseif (!$load_arguments[$param->name] || !is_callable($load_arguments[$param->name])) {
+            unset($load_arguments[$param->name]);
+          }
+        }
       }
     }
     foreach ($parameters as $name => $default_value) {
       // Check to see if the parameter exists.
       if (isset($data[$name])) {
+        $value = $data[$name];
+
+        // Load the parameter using a load argument callback, if one exists.
+        if (is_array($load_arguments) && isset($load_arguments[$name])) {
+          $value = call_user_func_array($load_arguments[$name], array($value));
+        }
+
+        // Ensure class type hinting is passing the proper value.
+        if (is_array($default_value) && isset($default_value['class'])) {
+          if (!is_object($value) || (get_class($value) !== $default_value['class'] && !is_subclass_of($value, $default_value['class']))) {
+            $value = $default_value['default'];
+          }
+        }
         // Convert the type of variable in the $_REQUEST array to match the
         // same variable type as the parameter's default value.
-        if (!is_null($default_value)) {
-          settype($data[$name], gettype($default_value));
+        elseif (!is_null($default_value)) {
+          settype($value, gettype($default_value));
         }
+
         // Move the value of the $_REQUEST data into the parameter array.
-        $parameters[$name] = $data[$name];
+        $parameters[$name] = $value;
+
         // Remove the request data since it has been moved.
         unset($data[$name]);
       }

@@ -30,7 +30,12 @@
  *     current user. WARNING: If not set, no access checks are performed at all.
  *     Defaults to "user_access" if the below option (access arguments) has
  *     a value.
- *   - access arguments: (optional) Arguments for the access callback.
+ *   - access arguments: (optional) Internal use. Normally, you won't need
+ *     to assign any callback arguments as they will automatically be determined
+ *     based on the names of passed parameters and callback function signatures.
+ *     If set, these static values will be passed to the callback function
+ *     before anything else. To automatically "load" arguments, see the "load
+ *     arguments" and "process request" properties below.
  *   - delivery callback: (optional) The function to call to package the results
  *     of the callback function and send it to the browser. Defaults to
  *     js_deliver_json(). Note that this function is called even if the
@@ -48,6 +53,18 @@
  *     support. JS auto-detects the language string in request paths. Set
  *     this option to TRUE to enable translations, if you're not getting the
  *     desired results.
+ *   - load arguments: (optional) An associative array of key/value pairs where
+ *     parameter name is the key and a callback is the value. The callback will
+ *     be passed a single argument, the value of the passed parameter. The JS
+ *     module automatically detects any "PARAMETER_load" functions that exist
+ *     based on if "process request" is enabled and the function explicitly
+ *     specifies that parameter in it's callback function signature. For
+ *     example: if one of the parameters passed is "node" and the callback
+ *     function signature defines a $node argument, then a "node_load" function
+ *     will be invoked (if the function exists). Optionally, to disable the
+ *     automatic load callback for a parameter, you can set the callback to
+ *     FALSE or to disable all automatic "load arguments" processing you may
+ *     set FALSE for the entire "load arguments" property.
  *   - methods: (optional) The request methods allowed. This must be an array
  *     of string values. If the request does not match any of the allowed
  *     methods defined by the callback, it will be rejected.
@@ -85,20 +102,30 @@ function hook_js_info() {
   // Simple callback definition:
   $callbacks['simple'] = array();
 
-  // Example of a more complex definition:
+  /* Example of a more complex definition:
+
+  function my_module_custom_access_check($node = NULL) {
+    // Node did not load or is not the right type.
+    if (!isset($node) || $node->type !== 'custom_bundle') {
+      return FALSE;
+    }
+    // Node is a fully loaded, determine access based on field value.
+    $field = field_get_items('node', $node, 'field_custom_bool_toggle');
+    return !!$field[0]['value'];
+  }
+
+  function my_module_custom_callback_function($node, $my_custom_param) {
+    // Node is fully loaded, retrieve a custom field value.
+    $field = field_get_items('node', $node, 'field_custom_field_text');
+    return $field[0]['value'];
+  }
+   */
   $callbacks['complex'] = array(
+    'bootstrap' => DRUPAL_BOOTSTRAP_LANGUAGE,
     'access callback'  => 'my_module_custom_access_check',
-    'access arguments' => array(1, 2),
-    'bootstrap' => DRUPAL_BOOTSTRAP_SESSION,
     'callback function' => 'my_module_custom_callback_function',
-    'callback arguments' => array(1, 2),
-    'delivery callback' => 'my_module_custom_delivery_callback',
-    'includes' => array('path', 'authorize', 'form'),
-    'dependencies' => array('system', 'views'),
-    'lang' => TRUE,
-    'method' => array('PUT'),
+    'dependencies' => array('field', 'node', 'system'),
     'skip init' => TRUE,
-    'process request' => FALSE,
     'token' => FALSE,
   );
   return $callbacks;

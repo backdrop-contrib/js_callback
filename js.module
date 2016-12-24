@@ -736,6 +736,7 @@ function js_get_callback($module = NULL, $callback = NULL, $reset = FALSE) {
             'dependencies' => array(),
             'includes' => array(),
             'lang' => FALSE,
+            'load arguments' => array(),
             'methods' => array('POST'),
             'module' => $_module,
             'process request' => TRUE,
