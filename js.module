@@ -674,6 +674,11 @@ function js_update_path() {
   if (!$processed) {
     $processed = TRUE;
     $path = implode('/', $_js['args']);
+    // Add language path prefix if there's one. If not added the language
+    // detection based on path prefix wont work.
+    if (!empty($_js['lang'])) {
+      $path = $_js['lang'] . '/' . $path;
+    }
     $_GET['q'] = $path;
     if (isset($_SERVER['REQUEST_URI'])) {
       $_SERVER['REQUEST_URI'] = '/' . $path;
