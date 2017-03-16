@@ -268,6 +268,12 @@ function js_callback_process_request(array &$info) {
     if (function_exists($function)) {
       $f = new ReflectionFunction($function);
       foreach ($f->getParameters() as $param) {
+
+        // Don't add parameters that have no default value and are not in $_REQUEST
+        if (!$param->isDefaultValueAvailable() && !isset($data[$param->name])) {
+          continue;
+        }
+
         // Determine if there's a default value.
         $default = $param->isDefaultValueAvailable() ? $param->getDefaultValue() : NULL;
 
