@@ -44,7 +44,20 @@
  *     that into account. See js_deliver_json() for an example.
  *   - bootstrap: (optional) The bootstrap level Drupal should boot to,
  *     defaults to DRUPAL_BOOTSTRAP_DATABASE. If an access argument/callback or
- *     tokens are used, defaults to DRUPAL_BOOTSTRAP_SESSION.
+ *     tokens are used, defaults to DRUPAL_BOOTSTRAP_SESSION. It is important to
+ *     keep in mind that, at a bootstrap level below DRUPAL_BOOTSTRAP_FULL, not
+ *     every module is loaded, which will affect which hook implementations are
+ *     actually called. This must be taken into consideration when writing a
+ *     callback implementation, because API usages triggering any kind of
+ *     storage write may result in incomplete/corrupt data to be stored. For
+ *     instance, loading an entity when entity cache is cold may result in some
+ *     data not being loaded and entity cache being corrupt; saving that entity
+ *     in subsequent requests may even lead to data loss, if the cache entry was
+ *     not refreshed meanwhile. A possible solution is raising the bootstrap
+ *     level to full, although this defeats the purpose of using this module.
+ *     An alternative solution is monitoring the code paths triggered by the
+ *     callback via the "xhprof" integration and make sure all required
+ *     dependencies are actually loaded.
  *   - includes: (optional) Load additional files from the /includes directory,
  *     without the extension.
  *   - dependencies: (optional) Load additional modules for this callback.
