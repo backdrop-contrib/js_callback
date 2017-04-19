@@ -53,11 +53,23 @@
  *     instance, loading an entity when entity cache is cold may result in some
  *     data not being loaded and entity cache being corrupt; saving that entity
  *     in subsequent requests may even lead to data loss, if the cache entry was
- *     not refreshed meanwhile. A possible solution is raising the bootstrap
- *     level to full, although this defeats the purpose of using this module.
- *     An alternative solution is monitoring the code paths triggered by the
- *     callback via the "xhprof" integration and make sure all required
- *     dependencies are actually loaded.
+ *     not refreshed meanwhile.
+ *     Note: by default JS Callback intercepts requests via core's Cache API.
+ *     When a cache miss is detected, it will automatically perform a full
+ *     bootstrap in an attempt to ensure all modules affecting the data to be
+ *     cached are loaded. See "cache" property for more info.
+ *     This does not, however, solve the general issue where a complex callback
+ *     performs a storage write via an API that allows data to be altered via
+ *     hook implementations. In cases like this all dependencies need to be
+ *     explicitly loaded.
+ *     A temporary solution is to raise the bootstrap level to full. However,
+ *     this defeats the entire purpose of using this module.
+ *     A more permanent solution is to monitor the execution path of a callback
+ *     via the "xhprof" integration and ensure all required dependencies are
+ *     added to the callback info.
+ *   - cache: (optional) Flag indicating whether a full bootstrap should be
+ *     performed when detecting a cache miss. Defaults to TRUE. See "bootstrap"
+ *     property for more info.
  *   - includes: (optional) Load additional files from the /includes directory,
  *     without the extension.
  *   - dependencies: (optional) Load additional modules for this callback.
