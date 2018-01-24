@@ -465,7 +465,7 @@
     $form.find(':button').bind('click', function () {
       $trigger = $(this);
     });
-    $form.bind('submit', function (e) {
+    $form.bind('submit.jsForm', function (e) {
       // Prevent the form submission.
       e.preventDefault();
 
