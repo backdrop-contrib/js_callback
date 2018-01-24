@@ -108,7 +108,13 @@
     if (!!options.url.match(new RegExp('^' + Drupal.settings.basePath + Drupal.settings.pathPrefix + (Drupal.settings.jsEndpoint || 'js')))) {
       // Older versions of jQuery do not have jqXHR.responseJSON, we must parse
       // the responseText manually.
-      var json = options.dataType === 'json' && jqXHR.responseText && $.parseJSON(jqXHR.responseText) || {};
+      var json = {};
+      try {
+        json = options.dataType === 'json' && jqXHR.responseText && $.parseJSON(jqXHR.responseText) || {};
+      }
+      catch (e) {
+        // Intentionally left blank, parsing failed (syntax error).
+      }
 
       // Process our own internal events (so they cannot be overridden).
       switch (type) {
