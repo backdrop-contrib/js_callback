@@ -649,6 +649,10 @@ function _js_cache_initialize() {
   // supposed to use.
   JsProxyCache::setConf($cache_conf);
 
+  // Configure excluded cache classes.
+  $excluded_conf = !empty($conf['js_excluded_cache_classes']) ? $conf['js_excluded_cache_classes'] : array('DrupalFakeCache');
+  JsProxyCache::setExcludedConf($excluded_conf);
+
   // Memcache requires an additional bootstrap phase to access variables.
   if (!empty($cache_conf[$default_key]) && $cache_conf[$default_key] === 'MemCacheDrupal') {
     js_bootstrap(DRUPAL_BOOTSTRAP_VARIABLES);
