@@ -272,8 +272,8 @@
       $elements.each(function () {
         var $input = $(this);
         var name = $input.attr('name') || $input.attr('id') || null;
-        var value = $input.is(':checkbox') ? ($input.is(':checked') ? $input.val() : 0) : $input.val();
-        if (name) {
+        var value = $input.is(':checkbox') ? ($input.is(':checked') ? $input.val() : null) : $input.val();
+        if (name && value !== null) {
           data[name] = value;
         }
       });
