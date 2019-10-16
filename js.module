@@ -352,15 +352,80 @@ function js_process_autocomplete($element) {
     // browser interpreting the path plus search string as an actual file.
     $current_clean_url = isset($GLOBALS['conf']['clean_url']) ? $GLOBALS['conf']['clean_url'] : NULL;
     $GLOBALS['conf']['clean_url'] = 0;
+
     // Force the script path to 'js.php', in case the server is not
     // configured to find it automatically. Normally it is the responsibility
     // of the site to do this themselves using hook_url_outbound_alter() (see
     // url()) but since this code is forcing non-clean URLs on sites that don't
     // normally use them, it is done here instead.
-    $element['#autocomplete_input']['#url_value'] = url('<front>', $options);
+    // @see https://www.drupal.org/project/js/issues/2873484
+    $base_url = url('<front>', $options);
+
+    // Because url() enforces it's own q parameter if a path/path-prefix is
+    // given, which happens if language prefixes are enabled, we need to
+    // enforce our q parameter.
+    $drupal_parsed_url = drupal_parse_url($base_url);
+
+    // Run the autocomplete path through url to ensure it get's the same
+    // prefixes. We use drupal_parse_url() as it nicely extracts q right away.
+    $autocomplete_path = drupal_parse_url(url($element['#autocomplete_path']));
+
+    // Add the extracted path as the q parameter for the autocomplete url.
+    $drupal_parsed_url['query']['q'] = $autocomplete_path['path'];
+
+    // Now create the fully cleaned url.
+    $parsed = parse_url($base_url);
+
+    // Inject our custom query.
+    $parsed['query'] = drupal_http_build_query($drupal_parsed_url['query']);
+
+    // Now build the uri from the parsed data.
+    $element['#autocomplete_input']['#url_value'] = _js_http_build_url($parsed);
+
     $GLOBALS['conf']['clean_url'] = $current_clean_url;
   }
   return $element;
+}
+
+/**
+ * Alt to http_build_url().
+ *
+ * @param array $parsed
+ *   Array from parse_url().
+ *
+ * @return string
+ *   URI is returned.
+ */
+function _js_http_build_url(array $parsed) {
+  $uri = '';
+  if (isset($parsed['scheme'])) {
+    switch (strtolower($parsed['scheme'])) {
+      // Mailto uri.
+      case 'mailto':
+        $uri .= $parsed['scheme'] . ':';
+        break;
+
+      // Protocol relative uri.
+      case '//':
+        $uri .= $parsed['scheme'];
+        break;
+
+      // Standard uri.
+      default:
+        $uri .= $parsed['scheme'] . '://';
+    }
+  }
+  $uri .= isset($parsed['user']) ? $parsed['user'] . (isset($parsed['pass']) ? ':' . $parsed['pass'] : '') . '@' : '';
+  $uri .= isset($parsed['host']) ? $parsed['host'] : '';
+  $uri .= !empty($parsed['port']) ? ':' . $parsed['port'] : '';
+
+  if (isset($parsed['path'])) {
+    $uri .= (substr($parsed['path'], 0, 1) === '/') ? $parsed['path'] : ((!empty($uri) ? '/' : '') . $parsed['path']);
+  }
+
+  $uri .= isset($parsed['query']) ? '?' . $parsed['query'] : '';
+  $uri .= isset($parsed['fragment']) ? '#' . $parsed['fragment'] : '';
+  return $uri;
 }
 
 /**
