@@ -80,10 +80,18 @@
     // Normalize data keys to Drupal variable standards.
     JS.snakeCaseObject(this.options.data);
 
+    return this;
+  };
+
+  /**
+   * Executes the AJAX request.
+   *
+   * @return {XMLHttpRequest}
+   */
+  JsAjax.prototype.send = function () {
     // Execute the request using $.ajax().
     this.jqXHR = $.ajax(this.options);
-
-    return this;
+    return this.jqXHR;
   };
 
   /**
@@ -211,7 +219,7 @@
       // Save this instance using a new identifier.
       options._jsInstance = this.instanceCount++;
       instance = this.instances[options._jsInstance] = new JsAjax(options);
-      return instance.jqXHR;
+      return instance.send();
     },
 
     /**
