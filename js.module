@@ -265,6 +265,18 @@ function js_server_info($server = NULL, $reset = FALSE) {
  * Implements hook_module_implements_alter().
  */
 function js_module_implements_alter(&$implementations, $hook) {
+  global $_js;
+
+  // We need to make sure hook implementation cache is never written while
+  // processing a JS request.
+  // Since most callbacks act at a bootstrap level lower than full, that is
+  // without loading all modules.
+  if (!empty($_js['module']) && !empty($_js['callback'])) {
+    $global_implementations = &drupal_static('module_implements');
+    // Remove the flag to write this cache.
+    unset($global_implementations['#write_cache']);
+  }
+
   // Remove the JS module from the services module hook.
   // @see https://www.drupal.org/project/js/issues/3075281
   if ($hook === 'server_info' && !empty($implementations['js'])) {
@@ -776,12 +788,6 @@ function js_deliver($result, array $info = NULL) {
   if ($delivery_callback === 'js_deliver_json') {
     module_load_include('inc', 'js', 'includes/json');
   }
-
-  // Since most callbacks act at a bootstrap level lower than full, that is
-  // without loading all modules, we need to make sure hook implementation cache
-  // is never written while processing a JS request.
-  $implementations = &drupal_static('module_implements');
-  unset($implementations['#write_cache']);
 
   // Deliver the results. The delivery callback is responsible for setting the
   // appropriate headers, handling the result returned from the callback and
