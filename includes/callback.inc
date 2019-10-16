@@ -85,6 +85,9 @@ function js_callback_bootstrap(array &$info) {
     }
   }
 
+  // Load a MODULE.js.inc file, if it exists.
+  module_load_include('inc', $info['module'], $info['module'] . '.js');
+
   // If the callback function is located in another file, load that file.
   $path = !empty($info['path']) ? $info['path'] : drupal_get_path('module', $info['module']);
   if (isset($info['file']) && ($filepath = $path . '/' . $info['file']) && file_exists($filepath)) {

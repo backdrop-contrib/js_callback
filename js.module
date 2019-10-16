@@ -19,6 +19,20 @@ define('JS_MENU_SITE_ONLINE', 5);
 define('JS_MENU_METHOD_NOT_ALLOWED', 6);
 
 /**
+ * Implements hook_hook_info().
+ */
+function js_hook_info() {
+  $group = array('group' => 'js');
+  $hooks['js_callback_filter_xss'] = $group;
+  $hooks['js_captured_content'] = $group;
+  $hooks['js_info'] = $group;
+  $hooks['js_info_alter'] = $group;
+  $hooks['js_server_info'] = $group;
+  $hooks['js_server_info_alter'] = $group;
+  return $hooks;
+}
+
+/**
  * Implements hook_menu().
  */
 function js_menu() {
@@ -221,9 +235,8 @@ function js_server_info($server = NULL, $reset = FALSE) {
       $servers = $cache->data;
     }
     else {
-      $hook = 'js_server_info';
-      foreach (module_implements($hook, FALSE, $reset) as $module) {
-        $results = module_invoke($module, $hook);
+      foreach (module_implements('js_server_info', FALSE, $reset) as $module) {
+        $results = module_invoke($module, 'js_server_info');
         // Iterate over each module and retrieve the server info.
         foreach ($results as $name => $info) {
           $servers[$name] = (array) $info;
@@ -247,7 +260,7 @@ function js_server_info($server = NULL, $reset = FALSE) {
       }
       // Invokes hook_js_server_info_alter(). Allow modules to alter the
       // server info before it's cached in the database.
-      drupal_alter($hook, $servers);
+      drupal_alter('js_server_info', $servers);
       cache_set($cid, $servers);
     }
   }
@@ -936,9 +949,8 @@ function js_get_callback($module = NULL, $callback = NULL, $reset = FALSE) {
       if ($_js) {
         js_bootstrap(DRUPAL_BOOTSTRAP_FULL);
       }
-      $hook = 'js_info';
-      foreach (module_implements($hook, FALSE, $reset) as $_module) {
-        $results = module_invoke($_module, $hook);
+      foreach (module_implements('js_info', FALSE, $reset) as $_module) {
+        $results = module_invoke($_module, 'js_info');
         // Iterate over each module and retrieve the callback info.
         foreach ($results as $_callback => $info) {
           $callbacks[$_module][$_callback] = (array) $info;
