@@ -262,6 +262,17 @@ function js_server_info($server = NULL, $reset = FALSE) {
 }
 
 /**
+ * Implements hook_module_implements_alter().
+ */
+function js_module_implements_alter(&$implementations, $hook) {
+  // Remove the JS module from the services module hook.
+  // @see https://www.drupal.org/project/js/issues/3075281
+  if ($hook === 'server_info' && !empty($implementations['js'])) {
+    unset($implementations['js']);
+  }
+}
+
+/**
  * Implements MODULE_js_callback_CALLBACK().
  *
  * Callback for processing form POST data. Because form data is sent via POST,
