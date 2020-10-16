@@ -147,9 +147,10 @@ function js_callback_bootstrap(array &$info) {
     fix_gpc_magic();
 
     // Create an associative array with weights as values.
-    $modules = array($info['module'] => 0);
+    $module_info = array('filename' => NULL);
+    $modules = array($info['module'] => $module_info);
     foreach ($info['dependencies'] as $dependency) {
-      $modules[$dependency] = 0;
+      $modules[$dependency] = $module_info;
     }
 
     // Reset module list and load them.
