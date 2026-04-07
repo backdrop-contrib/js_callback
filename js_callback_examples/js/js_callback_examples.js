@@ -1,9 +1,9 @@
 (function ($) {
 
   /**
-   * Drupal behavior.
+   * Backdrop behavior.
    */
-  Drupal.behaviors.jsExample = {
+  Backdrop.behaviors.jsExample = {
     attach: function (context, settings) {
       var $context = $(context);
 

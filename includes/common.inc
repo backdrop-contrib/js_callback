@@ -15,7 +15,7 @@
  *   The function name of the callback to invoke.
  */
 function js_delivery_callback($function = NULL) {
-  $callback = &drupal_static(__FUNCTION__);
+  $callback = &backdrop_static(__FUNCTION__);
   if (!isset($callback)) {
     $callback = 'js_deliver_json';
   }
@@ -86,7 +86,7 @@ function js_http_response($code = 200) {
       '@code' => $code,
     )));
   }
-  drupal_add_http_header('Status', $code . ' ' . $codes[$code]);
+  backdrop_add_http_header('Status', $code . ' ' . $codes[$code]);
 
   // Return the status code and message as an associative array.
   return array(
@@ -133,10 +133,10 @@ function js_is_renderable(array $array = array(), $recursive = TRUE) {
 function js_reinitialize_theme() {
   global $_js;
   if (!empty($_js['theme'])) {
-    $custom_theme = &drupal_static('menu_get_custom_theme');
+    $custom_theme = &backdrop_static('menu_get_custom_theme');
     $custom_theme = $_js['theme'];
     unset($GLOBALS['theme']);
-    drupal_static_reset();
-    drupal_theme_initialize();
+    backdrop_static_reset();
+    backdrop_theme_initialize();
   }
 }

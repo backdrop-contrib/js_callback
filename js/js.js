@@ -14,9 +14,9 @@
     var
       JS = window.JS,
       host = window.location.origin,
-      base = Drupal.settings.basePath || '/',
-      prefix = Drupal.settings.pathPrefix || '',
-      theme = Drupal.settings.ajaxPageState && Drupal.settings.ajaxPageState.theme || '';
+      base = Backdrop.settings.basePath || '/',
+      prefix = Backdrop.settings.pathPrefix || '',
+      theme = Backdrop.settings.ajaxPageState && Backdrop.settings.ajaxPageState.theme || '';
 
     this.defaults = options || {};
     this.options = options || {};
@@ -77,7 +77,7 @@
     // normal $.ajax() method should be used instead.
     this.options.url = base + prefix + 'js/' + (this.options.url ? prefix + this.options.url : '');
 
-    // Normalize data keys to Drupal variable standards.
+    // Normalize data keys to Backdrop variable standards.
     JS.snakeCaseObject(this.options.data);
 
     return this;
@@ -113,7 +113,7 @@
   var JsAjaxBehaviors = function (type, event, jqXHR, options) {
     var JS = window.JS;
     // Ensure on JS module requests are processed.
-    if (!!options.url.match(new RegExp('^' + Drupal.settings.basePath + Drupal.settings.pathPrefix + (Drupal.settings.jsEndpoint || 'js')))) {
+    if (!!options.url.match(new RegExp('^' + Backdrop.settings.basePath + Backdrop.settings.pathPrefix + (Backdrop.settings.jsEndpoint || 'js')))) {
       // Older versions of jQuery do not have jqXHR.responseJSON, we must parse
       // the responseText manually.
       var json = {};
@@ -163,13 +163,13 @@
 
           // Merge in any request JS settings.
           if (json.settings) {
-            Drupal.settings = $.extend(true, {}, Drupal.settings, json.settings);
+            Backdrop.settings = $.extend(true, {}, Backdrop.settings, json.settings);
           }
 
-          // Parse and display any Drupal messages set.
+          // Parse and display any Backdrop messages set.
           if (json.messages) {
             JS.messages
-              .prepend(Drupal.theme('statusMessages', json.messages))
+              .prepend(Backdrop.theme('statusMessages', json.messages))
               .trigger('loaded');
           }
           break;
@@ -289,7 +289,7 @@
     },
 
     /**
-     * Converts object keys from jsonLowerCamelCase to drupal_php_snake_case.
+     * Converts object keys from jsonLowerCamelCase to backdrop_php_snake_case.
      *
      * @param {object} obj
      *   The object to iterate over.
@@ -316,7 +316,7 @@
         }
 
         // Sanitize the value, recurse if an object or array.
-        value = $.isPlainObject(value) || $.isArray(value) ? self.snakeCaseObject(value) : Drupal.checkPlain(value);
+        value = $.isPlainObject(value) || $.isArray(value) ? self.snakeCaseObject(value) : Backdrop.checkPlain(value);
 
         // Store the value.
         obj[key] = value;
@@ -402,7 +402,7 @@
     var data = $.extend(true, {
       js_module: module,
       js_callback: callback,
-      js_token: (module && callback && Drupal.settings.js && Drupal.settings.js.tokens && Drupal.settings.js.tokens[module + '-' + callback]) || ''
+      js_token: (module && callback && Backdrop.settings.js && Backdrop.settings.js.tokens && Backdrop.settings.js.tokens[module + '-' + callback]) || ''
     }, options.data);
     JS.ajax($.extend(true, {
       type: 'POST',
@@ -503,12 +503,12 @@
   /**
    * Core template for theming status messages.
    */
-  Drupal.theme.prototype.statusMessages = function (messages) {
+  Backdrop.theme.prototype.statusMessages = function (messages) {
     var output = '';
     var status_heading = {
-      status: Drupal.t('Status message'),
-      error: Drupal.t('Error message'),
-      warning: Drupal.t('Warning message')
+      status: Backdrop.t('Status message'),
+      error: Backdrop.t('Error message'),
+      warning: Backdrop.t('Warning message')
     };
     for (var type in messages) {
       if (!messages.hasOwnProperty(type)) {

@@ -39,7 +39,7 @@ function js_menu() {
   $items['admin/config/system/js'] = array(
     'title' => 'JS Callback handler',
     'description' => 'Configure JavaScript callback handler.',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('js_configure_form'),
     'access arguments' => array('administer js'),
     'file' => 'js.admin.inc',
@@ -60,20 +60,20 @@ function js_permission() {
 }
 
 /**
- * Implements hook_library().
+ * Implements hook_library_info().
  */
-function js_library() {
+function js_library_info() {
   $libraries['js'] = array(
     'title' => 'JS AJAX Handler',
     'version' => '2.0.0',
     'js' => array(
-      drupal_get_path('module', 'js') . '/js.js' => array(
+      backdrop_get_path('module', 'js') . '/js/js.js' => array(
         'weight' => -100,
       ),
       0 => array(
         'type' => 'setting',
         'data' => array(
-          'jsEndpoint' => variable_get('js_endpoint', 'js'),
+          'jsEndpoint' => config_get('js.settings', 'endpoint'),
         ),
       ),
     ),
@@ -89,11 +89,11 @@ function js_library() {
  *
  * Provide necessary JS functionality so modules can generate easier requests.
  */
-function js_preprocess_html() {
+function js_preprocess_html(&$variables) {
   // Add any unique tokens created to the current page request. This is to help
   // ensure valid JS requests. Note, this only adds tokens that were generated
   // on this page request. It does not provide tokens for all callbacks.
-  drupal_add_js(array(
+  backdrop_add_js(array(
     'js' => array(
       'tokens' => js_get_token(),
     ),
@@ -113,7 +113,7 @@ function js_custom_theme() {
   if (!empty($_js['module']) && !empty($_js['callback'])) {
     $info = js_get_callback($_js['module'], $_js['callback']);
     if (!$info['skip init'] && $info['dependencies']) {
-      $implementations = &drupal_static('module_implements');
+      $implementations = &backdrop_static('module_implements');
       // After a global cache clear, hook implementation info is not available
       // yet, so we explicitly rebuild it.
       if (!isset($implementations['init'])) {
@@ -136,7 +136,7 @@ function js_custom_theme() {
  */
 function js_js_info() {
   $callbacks['form'] = array(
-    // Because this callback invokes js_get_page() and fully bootstraps Drupal,
+    // Because this callback invokes js_get_page() and fully bootstraps Backdrop,
     // there is no need to have these enabled. Also, FAPI handles it's own
     // validation.
     'token' => FALSE,
@@ -152,12 +152,12 @@ function js_js_info() {
  */
 function js_js_server_info() {
   $base_path = preg_quote(base_path());
-  $endpoint = preg_quote(variable_get('js_endpoint', 'js'));
+  $endpoint = preg_quote(config_get('js.settings', 'endpoint'));
   $regexp = '(?:[a-z]{2}(?:-[A-Za-z]{2,4})?/)?(?:' . $endpoint . '|' . $endpoint . '/.*)';
 
   $header = array(
     '###',
-    '### Support for https://www.drupal.org/project/js module.',
+    '### Support for https://www.backdropcms.org/project/js module.',
     '###',
   );
 
@@ -219,13 +219,13 @@ function js_js_server_info() {
  *   that provided server information is returned.
  */
 function js_server_info($server = NULL, $reset = FALSE) {
-  // Use the advanced drupal_static() pattern, since this has the potential to
+  // Use the advanced backdrop_static() pattern, since this has the potential to
   // be called quite often on a single page request.
-  static $drupal_static_fast;
-  if (!isset($drupal_static_fast)) {
-    $drupal_static_fast['servers'] = &drupal_static(__FUNCTION__);
+  static $backdrop_static_fast;
+  if (!isset($backdrop_static_fast)) {
+    $backdrop_static_fast['servers'] = &backdrop_static(__FUNCTION__);
   }
-  $servers = &$drupal_static_fast['servers'];
+  $servers = &$backdrop_static_fast['servers'];
 
   // Populate servers. Using cache if possible or rebuild if necessary.
   if ($reset || !isset($servers)) {
@@ -260,7 +260,7 @@ function js_server_info($server = NULL, $reset = FALSE) {
       }
       // Invokes hook_js_server_info_alter(). Allow modules to alter the
       // server info before it's cached in the database.
-      drupal_alter('js_server_info', $servers);
+      backdrop_alter('js_server_info', $servers);
       cache_set($cid, $servers);
     }
   }
@@ -285,7 +285,7 @@ function js_module_implements_alter(&$implementations, $hook) {
   // Since most callbacks act at a bootstrap level lower than full, that is
   // without loading all modules.
   if (!empty($_js['module']) && !empty($_js['callback'])) {
-    $global_implementations = &drupal_static('module_implements');
+    $global_implementations = &backdrop_static('module_implements');
     // Remove the flag to write this cache.
     unset($global_implementations['#write_cache']);
   }
@@ -311,9 +311,9 @@ function js_js_callback_form() {
 }
 
 /**
- * Implements hook_drupal_goto_alter().
+ * Implements hook_backdrop_goto_alter().
  */
-function js_drupal_goto_alter(&$path, &$options, &$http_response_code) {
+function js_backdrop_goto_alter(&$path, &$options, &$http_response_code) {
   global $_js;
   if ($_js && in_array($http_response_code, array(301, 302, 303, 307))) {
     module_load_include('inc', 'js', 'includes/json');
@@ -389,20 +389,20 @@ function js_process_autocomplete($element) {
     // Because url() enforces it's own q parameter if a path/path-prefix is
     // given, which happens if language prefixes are enabled, we need to
     // enforce our q parameter.
-    $drupal_parsed_url = drupal_parse_url($base_url);
+    $backdrop_parsed_url = backdrop_parse_url($base_url);
 
     // Run the autocomplete path through url to ensure it get's the same
-    // prefixes. We use drupal_parse_url() as it nicely extracts q right away.
-    $autocomplete_path = drupal_parse_url(url($element['#autocomplete_path']));
+    // prefixes. We use backdrop_parse_url() as it nicely extracts q right away.
+    $autocomplete_path = backdrop_parse_url(url($element['#autocomplete_path']));
 
     // Add the extracted path as the q parameter for the autocomplete url.
-    $drupal_parsed_url['query']['q'] = $autocomplete_path['path'];
+    $backdrop_parsed_url['query']['q'] = $autocomplete_path['path'];
 
     // Now create the fully cleaned url.
     $parsed = parse_url($base_url);
 
     // Inject our custom query.
-    $parsed['query'] = drupal_http_build_query($drupal_parsed_url['query']);
+    $parsed['query'] = backdrop_http_build_query($backdrop_parsed_url['query']);
 
     // Now build the uri from the parsed data.
     $element['#autocomplete_input']['#url_value'] = _js_http_build_url($parsed);
@@ -482,12 +482,12 @@ function js_pre_render_element($element) {
  */
 function _js_error_handler($error_level, $message) {
   if ($error_level & error_reporting()) {
-    require_once DRUPAL_ROOT . '/includes/errors.inc';
+    require_once BACKDROP_ROOT . '/core/includes/errors.inc';
 
-    $types = drupal_error_levels();
+    $types = backdrop_error_levels();
     list($severity_msg, $severity_level) = $types[$error_level];
     $backtrace = debug_backtrace();
-    $caller = _drupal_get_last_caller($backtrace);
+    $caller = _backdrop_get_last_caller($backtrace);
 
     _js_log_php_error(array(
       '%type' => isset($types[$error_level]) ? $severity_msg : 'Unknown error',
@@ -498,7 +498,7 @@ function _js_error_handler($error_level, $message) {
       '%file' => $caller['file'],
       '%line' => $caller['line'],
       'severity_level' => $severity_level,
-       // Drupal treats recoverable errors as fatals.
+       // Backdrop treats recoverable errors as fatals.
     ), $error_level == E_RECOVERABLE_ERROR);
   }
 }
@@ -514,12 +514,12 @@ function _js_error_handler($error_level, $message) {
  *   The exception object that was thrown.
  */
 function _js_exception_handler($exception) {
-  require_once DRUPAL_ROOT . '/includes/errors.inc';
+  require_once BACKDROP_ROOT . '/core/includes/errors.inc';
 
   // Support both PHP 5 exceptions and PHP 7 throwables.
   // @see https://www.drupal.org/project/js/issues/3027913
   try {
-    _js_log_php_error(_drupal_decode_exception($exception), TRUE);
+    _js_log_php_error(_backdrop_decode_exception($exception), TRUE);
   }
   catch (\Throwable $uncaught) {
     // Intentionally left blank.
@@ -533,10 +533,10 @@ function _js_exception_handler($exception) {
   // uncaught exception being thrown.
   if (isset($uncaught)) {
     $message = '<h1>Additional uncaught exception thrown while handling exception.</h1>';
-    $message .= '<h2>Original</h2><p>' . _drupal_render_exception_safe($exception) . '</p>';
-    $message .= '<h2>Additional</h2><p>' . _drupal_render_exception_safe($uncaught) . '</p>';
+    $message .= '<h2>Original</h2><p>' . _backdrop_render_exception_safe($exception) . '</p>';
+    $message .= '<h2>Additional</h2><p>' . _backdrop_render_exception_safe($uncaught) . '</p>';
     $backtrace = debug_backtrace();
-    $caller = _drupal_get_last_caller($backtrace);
+    $caller = _backdrop_get_last_caller($backtrace);
     _js_log_php_error(array(
       '%type' => 'Unknown error',
       // The standard PHP error handler considers that the error messages
@@ -555,7 +555,7 @@ function _js_exception_handler($exception) {
  */
 function _js_fatal_error_handler() {
   if ($error = error_get_last()) {
-    require_once DRUPAL_ROOT . '/includes/errors.inc';
+    require_once BACKDROP_ROOT . '/core/includes/errors.inc';
     _js_log_php_error(array(
       '%type' => 'Fatal Error',
       // The standard PHP error handler considers that the error messages
@@ -585,10 +585,10 @@ function _js_log_php_error(array $error, $fatal = FALSE) {
   // Display the error to the user, if it should.
   if (error_displayable($error)) {
     if (!isset($error['%function'])) {
-      drupal_set_message(t('%type: !message (line %line of %file).', $error), 'error');
+      backdrop_set_message(t('%type: !message (line %line of %file).', $error), 'error');
     }
     else {
-      drupal_set_message(t('%type: !message in %function (line %line of %file).', $error), 'error');
+      backdrop_set_message(t('%type: !message in %function (line %line of %file).', $error), 'error');
     }
   }
 
@@ -647,7 +647,7 @@ function js_execute_request() {
   $_js['args'] = explode('/', $_GET['q']);
 
   // Determine the JS "endpoint".
-  $endpoint = variable_get('js_endpoint', 'js');
+  $endpoint = config_get('js.settings', 'endpoint');
 
   // Determine if there is a language prefix in the path.
   $_js['lang'] = FALSE;
@@ -682,7 +682,7 @@ function js_execute_request() {
     // the JS_MENU_NOT_FOUND integer.
     $info = js_get_callback($_js['module'], $_js['callback']);
     if (!$info) {
-      drupal_set_message(t('The requested callback "%callback" defined by the "%module" module could not be loaded. Please check your configuration and try again.', array(
+      backdrop_set_message(t('The requested callback "%callback" defined by the "%module" module could not be loaded. Please check your configuration and try again.', array(
         '%callback' => $_js['callback'],
         '%module' => $_js['module'],
       )), 'error', FALSE);
@@ -701,21 +701,21 @@ function js_execute_request() {
       $token_valid = FALSE;
       $validate_token = $info['token'] !== FALSE;
 
-      // If a token should be validated, Drupal requires a minimum
-      // DRUPAL_BOOTSTRAP_SESSION level. The current SESSION user must also not
+      // If a token should be validated, Backdrop requires a minimum
+      // BACKDROP_BOOTSTRAP_SESSION level. The current SESSION user must also not
       // be anonymous as the token would be the same for anonymous users. This
       // is a security requirement.
       if ($validate_token) {
-        js_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
-        drupal_load('module', 'user');
-        $token_valid = !user_is_anonymous() && drupal_valid_token($_js['token'], 'js-' . $_js['module'] . '-' . $_js['callback']);
+        js_bootstrap(BACKDROP_BOOTSTRAP_SESSION);
+        backdrop_load('module', 'user');
+        $token_valid = !user_is_anonymous() && backdrop_valid_token($_js['token'], 'js-' . $_js['module'] . '-' . $_js['callback']);
       }
 
       // Set the proper request result and display a message if a token should
       // be validated and it didn't.
       if ($validate_token && !$token_valid) {
         $request_result = JS_MENU_ACCESS_DENIED;
-        drupal_set_message(t('Cannot complete request. The token provided was either missing or invalid. Please refresh this page or try logging out and back in again.'), 'error', FALSE);
+        backdrop_set_message(t('Cannot complete request. The token provided was either missing or invalid. Please refresh this page or try logging out and back in again.'), 'error', FALSE);
       }
       // Only continue if the token shouldn't be validated or was validated and
       // it passed.
@@ -750,7 +750,7 @@ function _js_cache_initialize() {
   // Save the current configuration and override it to make sure an instance of
   // our custom wrapper is instantiated for each configured bin.
   $cache_conf = array();
-  $default_class = isset($conf[$default_key]) ? $conf[$default_key] : 'DrupalDatabaseCache';
+  $default_class = isset($conf[$default_key]) ? $conf[$default_key] : 'BackdropDatabaseCache';
   foreach ($cache_bin_keys as $bin_key) {
     $cache_conf[$bin_key] = isset($conf[$bin_key]) ? $conf[$bin_key] : $default_class;
     $conf[$bin_key] = 'JsProxyCache';
@@ -761,12 +761,12 @@ function _js_cache_initialize() {
   JsProxyCache::setConf($cache_conf);
 
   // Configure excluded cache classes.
-  $excluded_conf = !empty($conf['js_excluded_cache_classes']) ? $conf['js_excluded_cache_classes'] : array('DrupalFakeCache');
+  $excluded_conf = !empty($conf['js_excluded_cache_classes']) ? $conf['js_excluded_cache_classes'] : array('BackdropFakeCache');
   JsProxyCache::setExcludedConf($excluded_conf);
 
   // Memcache requires an additional bootstrap phase to access variables.
-  if (!empty($cache_conf[$default_key]) && $cache_conf[$default_key] === 'MemCacheDrupal') {
-    js_bootstrap(DRUPAL_BOOTSTRAP_VARIABLES);
+  if (!empty($cache_conf[$default_key]) && $cache_conf[$default_key] === 'MemCacheBackdrop') {
+    js_bootstrap(BACKDROP_BOOTSTRAP_VARIABLES);
   }
 }
 
@@ -786,7 +786,7 @@ function js_deliver($result, array $info = NULL) {
   // explicitly disabled "capture", then allow loaded modules add the captured
   // output to the result via hook_js_captured_content_alter().
   if (!isset($info) || !empty($info['capture'])) {
-    drupal_alter('js_captured_content', $result, $captured);
+    backdrop_alter('js_captured_content', $result, $captured);
   }
   // Otherwise, just print the captured output before hand.
   else {
@@ -809,26 +809,26 @@ function js_deliver($result, array $info = NULL) {
 }
 
 /**
- * Ensures Drupal is bootstrapped to the specified phase.
+ * Ensures Backdrop is bootstrapped to the specified phase.
  *
  * @param int $phase
  *   A constant telling which phase to bootstrap to.
  * @param bool $new_phase
- *   A boolean, set to FALSE if calling drupal_bootstrap from inside a
- *   function called from drupal_bootstrap (recursion).
+ *   A boolean, set to FALSE if calling backdrop_bootstrap from inside a
+ *   function called from backdrop_bootstrap (recursion).
  *
  * @return int
  *   The most recently completed phase.
  *
- * @see drupal_bootstrap()
+ * @see backdrop_bootstrap()
  */
 function js_bootstrap($phase = NULL, $new_phase = TRUE) {
   // If we have a bootstrap level greater or equal to language initialization,
   // we need to update path, because otherwise path initialization will fail.
-  if ($phase >= DRUPAL_BOOTSTRAP_LANGUAGE) {
+  if ($phase >= BACKDROP_BOOTSTRAP_LANGUAGE) {
     js_update_path();
   }
-  return drupal_bootstrap($phase, $new_phase);
+  return backdrop_bootstrap($phase, $new_phase);
 }
 
 /**
@@ -883,19 +883,19 @@ function js_update_path() {
  *   is returned, otherwise all current tokens set are returned.
  */
 function js_get_token($module = NULL, $callback = NULL) {
-  // Use the advanced drupal_static() pattern, since this has the potential to
+  // Use the advanced backdrop_static() pattern, since this has the potential to
   // be called quite often on a single page request.
-  static $drupal_static_fast;
-  if (!isset($drupal_static_fast)) {
-    $drupal_static_fast['tokens'] = &drupal_static(__FUNCTION__, array());
+  static $backdrop_static_fast;
+  if (!isset($backdrop_static_fast)) {
+    $backdrop_static_fast['tokens'] = &backdrop_static(__FUNCTION__, array());
   }
-  $tokens = &$drupal_static_fast['tokens'];
+  $tokens = &$backdrop_static_fast['tokens'];
 
   // Return a specific token for a module callback.
   if (!empty($module) && !empty($callback)) {
     // Only authenticated users should be allowed to generate tokens.
     if (!user_is_anonymous()) {
-      return $tokens["$module-$callback"] = drupal_get_token("js-$module-$callback");
+      return $tokens["$module-$callback"] = backdrop_get_token("js-$module-$callback");
     }
     else {
       return FALSE;
@@ -928,13 +928,13 @@ function js_get_token($module = NULL, $callback = NULL) {
  */
 function js_get_callback($module = NULL, $callback = NULL, $reset = FALSE) {
   global $_js;
-  // Use the advanced drupal_static() pattern, since this has the potential to
+  // Use the advanced backdrop_static() pattern, since this has the potential to
   // be called quite often on a single page request.
-  static $drupal_static_fast;
-  if (!isset($drupal_static_fast)) {
-    $drupal_static_fast['callbacks'] = &drupal_static(__FUNCTION__);
+  static $backdrop_static_fast;
+  if (!isset($backdrop_static_fast)) {
+    $backdrop_static_fast['callbacks'] = &backdrop_static(__FUNCTION__);
   }
-  $callbacks = &$drupal_static_fast['callbacks'];
+  $callbacks = &$backdrop_static_fast['callbacks'];
 
   // Populate callbacks. Using cache if possible or rebuild if necessary.
   if ($reset || !isset($callbacks)) {
@@ -944,10 +944,10 @@ function js_get_callback($module = NULL, $callback = NULL, $reset = FALSE) {
     }
     else {
       // If we get to this point, this is the first time this is being run
-      // after a cache clear. This single request may take longer, but Drupal
+      // after a cache clear. This single request may take longer, but Backdrop
       // must be fully bootstrapped to detect all hook implementations.
       if ($_js) {
-        js_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+        js_bootstrap(BACKDROP_BOOTSTRAP_FULL);
       }
       foreach (module_implements('js_info', FALSE, $reset) as $_module) {
         $results = module_invoke($_module, 'js_info');
@@ -958,7 +958,7 @@ function js_get_callback($module = NULL, $callback = NULL, $reset = FALSE) {
           $callbacks[$_module][$_callback] += array(
             'access arguments' => array(),
             'access callback'  => FALSE,
-            'bootstrap' => DRUPAL_BOOTSTRAP_DATABASE,
+            'bootstrap' => BACKDROP_BOOTSTRAP_DATABASE,
             'cache' => TRUE,
             // Provide a standard function name to use if none is provided.
             'callback function' => $_module . '_js_callback_' . $_callback,
@@ -981,7 +981,7 @@ function js_get_callback($module = NULL, $callback = NULL, $reset = FALSE) {
       }
       // Invokes hook_js_info_alter(). Allow modules to alter the callback
       // info before it's cached in the database.
-      drupal_alter('js_info', $callbacks);
+      backdrop_alter('js_info', $callbacks);
       cache_set($cid, $callbacks);
     }
   }
