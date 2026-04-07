@@ -775,10 +775,10 @@ function _js_cache_initialize() {
  *
  * @param mixed $result
  *   The content to pass to the delivery callback.
- * @param array $info
+ * @param ?array $info
  *   The callback definition array, may not be set.
  */
-function js_deliver($result, array $info = NULL) {
+function js_deliver($result, ?array $info = NULL) {
   // Capture buffered content.
   $captured = ob_get_clean();
 
