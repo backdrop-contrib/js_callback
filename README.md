@@ -6,6 +6,12 @@ requests including (but not limited to) AHAH, AJAX, JSON, XML, etc.
 Note: this module does nothing by itself. It requires other modules to leverage
 its functionality and APIs.
 
+### Namespace
+
+This module's namespace is simply `js`, as inherited from the Drupal 7 project,
+but the main folder has been renamed to `js_callback` because Backdrop skips
+`js` as a folder name when looking for modules.
+
 ### Performance
 
 Apache benchmarks speak for itself:
@@ -63,7 +69,6 @@ More detailed usage instructions can be
 
 Please read the `js.api.php` file and look at the `js_callback_examples`
 sub-module for more information.
-
 
 ### Settings
 
