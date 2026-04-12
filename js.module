@@ -8,8 +8,8 @@
 /**
  * Constants copied from menu.inc in order to drop dependency on that file.
  */
-define('JS_MENU_NOT_FOUND', 2);
-define('JS_MENU_ACCESS_DENIED', 3);
+define('JS_MENU_NOT_FOUND', 404);
+define('JS_MENU_ACCESS_DENIED', 403);
 define('JS_MENU_SITE_OFFLINE', 4);
 define('JS_MENU_SITE_ONLINE', 5);
 
@@ -136,9 +136,9 @@ function js_custom_theme() {
  */
 function js_js_info() {
   $callbacks['form'] = array(
-    // Because this callback invokes js_get_page() and fully bootstraps Backdrop,
-    // there is no need to have these enabled. Also, FAPI handles it's own
-    // validation.
+    // Because this callback invokes js_get_page() and fully bootstraps
+    // Backdrop, there is no need to have these enabled. Also, FAPI handles it's
+    // own validation.
     'token' => FALSE,
     'xss' => FALSE,
   );
