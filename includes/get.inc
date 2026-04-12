@@ -35,36 +35,7 @@ function js_get_page() {
         '!url' => url(current_path()),
       )), 'error', FALSE);
     }
-    return $page;
   }
 
-  // The result was successful. The contents of this request must be rendered
-  // here to mimic what Backdrop normally returns. This code is almost identical
-  // to backdrop_render_page(), except that it only renders the "system_main"
-  // section of the page and nothing else.
-  // @see backdrop_render_page()
-  // @todo: This must change for Backdrop, where backdrop_render_page() has
-  // been refactored and backdrop_set_page_content() no longer exists. See:
-  // https://docs.backdropcms.org/change-records/new-layout-module-implements-a-drag-drop-model-for-building-layouts
-  // and
-  // https://docs.backdropcms.org/api/backdrop/core%21includes%21common.inc/function/backdrop_render_page/1
-  $main_content_display = &backdrop_static('system_main_content_added', FALSE);
-  if (is_string($page) || (is_array($page) && (!isset($page['#type']) || ($page['#type'] != 'page')))) {
-    backdrop_set_page_content($page);
-    $page = element_info('page');
-  }
-  foreach (module_implements('page_build') as $module) {
-    $function = $module . '_page_build';
-    $function($page);
-  }
-  backdrop_alter('page', $page);
-  if (!$main_content_display) {
-    $page['content']['system_main'] = backdrop_set_page_content();
-  }
-  // Remove the "block" theme wrapper. This prevents a duplicate "system main"
-  // block from appearing while still rendering the content inside it.
-  if (isset($page['content']['system_main']['#theme_wrappers']) && ($key = array_search('block', $page['content']['system_main']['#theme_wrappers']))) {
-    unset($page['content']['system_main']['#theme_wrappers'][$key]);
-  }
-  return $page['content']['system_main'];
+  return $page;
 }

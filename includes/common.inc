@@ -117,7 +117,9 @@ function js_is_renderable(array $array = array(), $recursive = TRUE) {
   if (array_intersect($keys, element_properties($array))) {
     return TRUE;
   }
-  if ($recursive) {
+  $is_prerendered = (!empty($array['content']) && is_string($array['content']));
+  $is_response_code = (isset($array['response']['code']) && is_int($array['response']['code']));
+  if ($recursive && !$is_prerendered && !$is_response_code) {
     foreach (element_children($array) as $child) {
       if (is_array($array[$child]) && js_is_renderable($array[$child])) {
         return TRUE;

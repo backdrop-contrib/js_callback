@@ -19,12 +19,12 @@
  *       });
  *
  *   - Array: An array of data to return.
- * @param array $info
+ * @param ?array $info
  *   The callback definition array, may not be set.
  *
  * @see js_ajax.js
  */
-function js_deliver_json($callback_result, array $info = NULL) {
+function js_deliver_json($callback_result, ?array $info = NULL) {
   $json = array();
 
   $redirect_codes = array(301, 302, 303, 307);
@@ -57,6 +57,9 @@ function js_deliver_json($callback_result, array $info = NULL) {
       else {
         $json += $callback_result;
       }
+    }
+    elseif (is_string($callback_result)) {
+      $json['content'] = $callback_result;
     }
     // Only add a "200 OK" response if not already set or request is a redirect.
     if (empty($json['response']['code']) || in_array($json['response']['code'], $redirect_codes)) {

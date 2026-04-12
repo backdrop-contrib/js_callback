@@ -470,10 +470,10 @@
     }
     options = typeof options === 'object' && options || {};
     var $trigger = $();
-    $form.find(':button').bind('click', function () {
+    $form.find(':button').on('click', function () {
       $trigger = $(this);
     });
-    $form.bind('submit.jsForm', function (e) {
+    $form.on('submit.jsForm', function (e) {
       // Prevent the form submission.
       e.preventDefault();
 

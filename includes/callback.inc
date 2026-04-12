@@ -32,17 +32,19 @@ function js_callback_execute(array $info) {
   $result = JS_MENU_NOT_FOUND;
 
   // Check callback access.
-  if (!empty($info['access callback']) && !call_user_func_array($info['access callback'], $info['access arguments'])) {
+  if (!empty($info['access callback']) && !call_user_func_array($info['access callback'], array_values($info['access arguments']))) {
     $result = JS_MENU_ACCESS_DENIED;
   }
   // Ensure callback function exists and can be invoked.
   elseif (!empty($info['callback function']) || function_exists($info['callback function'])) {
     if ($xhprof) {
-      xhprof_enable(0, array('ignored_functions' => array('call_user_func', 'call_user_func_array')));
+      xhprof_enable(0, array('ignored_functions' => array(
+        'call_user_func',
+        'call_user_func_array',
+      )));
     }
 
-    // Execute the callback.
-    $result = call_user_func_array($info['callback function'], $info['callback arguments']);
+    $result = call_user_func_array($info['callback function'], array_values($info['callback arguments']));
 
     if ($xhprof) {
       backdrop_set_message('XHProf results:<ul><li>' . implode('</li><li>', array_keys(xhprof_disable())) . '</li></ul>');
@@ -166,6 +168,7 @@ function js_callback_bootstrap(array &$info) {
     // (e.g. entity info).
     global $language;
     if (!isset($language)) {
+      include_once BACKDROP_ROOT . '/core/includes/language.inc';
       $language = language_default();
 
       $types = language_types_info();
@@ -286,7 +289,7 @@ function js_callback_process_request(array &$info) {
         $default = $param->isDefaultValueAvailable() ? $param->getDefaultValue() : NULL;
 
         // Determine if callback parameter has been type hinted with a class.
-        if ($class = $param->getClass()) {
+        if ($class = $param->getType()) {
           $default = array('class' => $class->getName(), 'default' => $default);
         }
 
