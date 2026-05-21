@@ -19,7 +19,7 @@ function js_callback_execute(array $info) {
 
   // If callback is being profiled, a full bootstrap is required.
   if ($xhprof) {
-    $info['bootstrap'] = DRUPAL_BOOTSTRAP_FULL;
+    $info['bootstrap'] = BACKDROP_BOOTSTRAP_FULL;
   }
 
   // Bootstrap the callback to minimal requirements.
@@ -32,20 +32,22 @@ function js_callback_execute(array $info) {
   $result = JS_MENU_NOT_FOUND;
 
   // Check callback access.
-  if (!empty($info['access callback']) && !call_user_func_array($info['access callback'], $info['access arguments'])) {
+  if (!empty($info['access callback']) && !call_user_func_array($info['access callback'], array_values($info['access arguments']))) {
     $result = JS_MENU_ACCESS_DENIED;
   }
   // Ensure callback function exists and can be invoked.
   elseif (!empty($info['callback function']) || function_exists($info['callback function'])) {
     if ($xhprof) {
-      xhprof_enable(0, array('ignored_functions' => array('call_user_func', 'call_user_func_array')));
+      xhprof_enable(0, array('ignored_functions' => array(
+        'call_user_func',
+        'call_user_func_array',
+      )));
     }
 
-    // Execute the callback.
-    $result = call_user_func_array($info['callback function'], $info['callback arguments']);
+    $result = call_user_func_array($info['callback function'], array_values($info['callback arguments']));
 
     if ($xhprof) {
-      drupal_set_message('XHProf results:<ul><li>' . implode('</li><li>', array_keys(xhprof_disable())) . '</li></ul>');
+      backdrop_set_message('XHProf results:<ul><li>' . implode('</li><li>', array_keys(xhprof_disable())) . '</li></ul>');
     }
 
     // Enforce sensitization of the result if the "xss" variable is not
@@ -59,14 +61,14 @@ function js_callback_execute(array $info) {
 }
 
 /**
- * Bootstraps Drupal to the correct level based on callback info.
+ * Bootstraps Backdrop to the correct level based on callback info.
  *
  * @param array $info
  *   The callback info array, passed by reference.
  *
  * @throws Exception
  *
- * @see _drupal_bootstrap_full()
+ * @see _backdrop_bootstrap_full()
  */
 function js_callback_bootstrap(array &$info) {
   global $_js;
@@ -89,19 +91,19 @@ function js_callback_bootstrap(array &$info) {
   module_load_include('inc', $info['module'], $info['module'] . '.js');
 
   // If the callback function is located in another file, load that file.
-  $path = !empty($info['path']) ? $info['path'] : drupal_get_path('module', $info['module']);
+  $path = !empty($info['path']) ? $info['path'] : backdrop_get_path('module', $info['module']);
   if (isset($info['file']) && ($filepath = $path . '/' . $info['file']) && file_exists($filepath)) {
     require_once $filepath;
   }
 
-  // The following mimics the behavior of _drupal_bootstrap_full().
+  // The following mimics the behavior of _backdrop_bootstrap_full().
   // The difference is that not all modules and includes are loaded.
-  if (js_bootstrap($info['bootstrap']) < DRUPAL_BOOTSTRAP_FULL) {
+  if (js_bootstrap($info['bootstrap']) < BACKDROP_BOOTSTRAP_FULL) {
     // If "access callback" isn't passed, but "access arguments" is,
-    // default to using "user_access" and bootstrap Drupal to at least
-    // DRUPAL_BOOTSTRAP_SESSION and ensure the user module has loaded.
+    // default to using "user_access" and bootstrap Backdrop to at least
+    // BACKDROP_BOOTSTRAP_SESSION and ensure the user module has loaded.
     if (empty($info['access callback']) && !empty($info['access arguments'])) {
-      js_bootstrap(DRUPAL_BOOTSTRAP_SESSION);
+      js_bootstrap(BACKDROP_BOOTSTRAP_SESSION);
       if (!in_array('user', $info['dependencies'])) {
         $info['dependencies'][] = 'user';
       }
@@ -109,7 +111,7 @@ function js_callback_bootstrap(array &$info) {
     }
 
     // If language is enabled or a language prefix was detected and site is
-    // multilingual, bootstrap at least to DRUPAL_BOOTSTRAP_LANGUAGE and ensure
+    // multilingual, bootstrap at least to BACKDROP_BOOTSTRAP_LANGUAGE and ensure
     // the required modules are enabled.
     if (!empty($info['lang']) || $_js['lang']) {
       if (!in_array('user', $info['dependencies'])) {
@@ -118,11 +120,11 @@ function js_callback_bootstrap(array &$info) {
       if (!in_array('path', $info['includes'])) {
         $info['includes'][] = 'path';
       }
-      // Boot at least DRUPAL_BOOTSTRAP_VARIABLES to ensure
-      // drupal_multilingual() works.
-      js_bootstrap(DRUPAL_BOOTSTRAP_VARIABLES);
-      if (drupal_multilingual()) {
-        js_bootstrap(DRUPAL_BOOTSTRAP_LANGUAGE);
+      // Boot at least BACKDROP_BOOTSTRAP_VARIABLES to ensure
+      // backdrop_multilingual() works.
+      js_bootstrap(BACKDROP_BOOTSTRAP_VARIABLES);
+      if (language_multilingual()) {
+        js_bootstrap(BACKDROP_BOOTSTRAP_LANGUAGE);
       }
     }
 
@@ -156,7 +158,7 @@ function js_callback_bootstrap(array &$info) {
     // Reset module list and load them.
     $module_list = module_list(FALSE, TRUE, FALSE, $modules);
     foreach ($module_list as $module) {
-      drupal_load('module', $module);
+      backdrop_load('module', $module);
     }
 
     // Make sure all stream wrappers are registered.
@@ -166,9 +168,10 @@ function js_callback_bootstrap(array &$info) {
     // (e.g. entity info).
     global $language;
     if (!isset($language)) {
+      include_once BACKDROP_ROOT . '/core/includes/language.inc';
       $language = language_default();
 
-      $types = language_types();
+      $types = language_types_info();
       foreach ($types as $type) {
         $GLOBALS[$type] = $language;
       }
@@ -251,7 +254,7 @@ function js_callback_process_request(array &$info) {
   $json_values = array('true', 'false', '1', '0', 'yes', 'no');
   foreach ($_REQUEST as $key => $value) {
     // Convert possible JSON strings into arrays.
-    if (is_string($value) && $value !== '' && ($value[0] === '[' || $value[0] === '{') && ($json = drupal_json_decode($value))) {
+    if (is_string($value) && $value !== '' && ($value[0] === '[' || $value[0] === '{') && ($json = backdrop_json_decode($value))) {
       $request_data[$key] = $json;
     }
     // Convert certain JSON values into booleans.
@@ -277,7 +280,7 @@ function js_callback_process_request(array &$info) {
       $f = new ReflectionFunction($function);
       foreach ($f->getParameters() as $param) {
 
-        // Don't add parameters that have no default value and are not in $_REQUEST
+        // Don't add parameters that have no default value and are not in $_REQUEST.
         if (!$param->isDefaultValueAvailable() && !isset($data[$param->name])) {
           continue;
         }
@@ -286,7 +289,7 @@ function js_callback_process_request(array &$info) {
         $default = $param->isDefaultValueAvailable() ? $param->getDefaultValue() : NULL;
 
         // Determine if callback parameter has been type hinted with a class.
-        if ($class = $param->getClass()) {
+        if ($class = $param->getType()) {
           $default = array('class' => $class->getName(), 'default' => $default);
         }
 
@@ -360,7 +363,7 @@ function js_callback_filter_xss($result) {
   static $allowed_tags;
   if (!isset($allowed_tags)) {
     $allowed_tags = array('a', 'abbr', 'acronym', 'address', 'article', 'aside', 'b', 'bdi', 'bdo', 'big', 'blockquote', 'br', 'caption', 'cite', 'code', 'col', 'colgroup', 'command', 'dd', 'del', 'details', 'dfn', 'div', 'dl', 'dt', 'em', 'figcaption', 'figure', 'footer', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hgroup', 'hr', 'i', 'img', 'ins', 'kbd', 'li', 'mark', 'menu', 'meter', 'nav', 'ol', 'output', 'p', 'pre', 'progress', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'section', 'small', 'span', 'strong', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'time', 'tr', 'tt', 'u', 'ul', 'var', 'wbr');
-    drupal_alter('js_callback_filter_xss', $allowed_tags);
+    backdrop_alter('js_callback_filter_xss', $allowed_tags);
   }
   if (is_string($result)) {
     $result = filter_xss($result, $allowed_tags);
