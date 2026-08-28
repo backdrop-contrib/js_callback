@@ -1,20 +1,4 @@
 # High-performance JavaScript Callback Handler
-> https://www.drupal.org/project/js
-
----
-
-1. About
-2. Performance
-3. Technical
-4. Installation
-5. Module Integration/API
-6. Settings
-7. Credit
-
-
----
-
-### About
 
 JavaScript callback handler is an interim solution for high-performance server
 requests including (but not limited to) AHAH, AJAX, JSON, XML, etc.
@@ -22,6 +6,11 @@ requests including (but not limited to) AHAH, AJAX, JSON, XML, etc.
 Note: this module does nothing by itself. It requires other modules to leverage
 its functionality and APIs.
 
+### Namespace
+
+This module's namespace is simply `js`, as inherited from the Drupal 7 project,
+but the main folder has been renamed to `js_callback` because Backdrop skips
+`js` as a folder name when looking for modules.
 
 ### Performance
 
@@ -43,10 +32,9 @@ Using `js.php`:
   Time per request:    59.371 [ms] (mean)
 ```
 
-
 ### Technical
 
-This module is mainly a conditional replacement for Drupal's `index.php` based
+This module is mainly a conditional replacement for Backdrop's `index.php` based
 on the default supported Apache `.htaccess` rewrite directives.
 
 With `mod_rewrite` enabled (for "clean urls"), it catches all calls to callback
@@ -54,31 +42,33 @@ paths starting with `js/` and passes them to a reduced loader instead of
 the default `index.php` file.
 
 Invoking only the explicitly defined dependencies instead of a completely
-bootstrapped Drupal instance. It saves lots of processing time and thus speeds
+bootstrapped Backdrop instance. It saves lots of processing time and thus speeds
 up small Ajax requests.
 
+## Installation
 
-### Installation
+- Install this module using the [official Backdrop CMS instructions](https://backdropcms.org/guide/modules)
 
-* Install as usual (see https://www.drupal.org/node/895232).
-* Enable the module.
+## Usage
+
 * Enabling the module should have automatically copied the `js.php` file bundled
-  with this module to the root directory of your Drupal installation (the
-  directory where your Drupal `.htaccess` and `index.php` is located). If it did
-  not, you will need to copy it manually.
-* Goto the configuration page: `admin/config/system/js`.
+  with this module to the root directory of your Backdrop installation (the
+  directory where your Backdrop `.htaccess` and `index.php` is located). If it
+  did not, you will need to copy it manually.
+* Go to the configuration page: `admin/config/system/js`.
 * Choose the type of server rewrite rules to use.
 * Copy the rewrite rules and then follow the instructions on where to paste
   them. If your server is not listed or you have a complex infrastructure setup,
   you will need to ensure that any request starting with `/js` is forwarded to
   the `js.php` file.
 
+More detailed usage instructions can be
+[viewed or edited in the Wiki](https://github.com/backdrop-contrib/js/wiki).
 
 ### Module Integration/API
 
 Please read the `js.api.php` file and look at the `js_callback_examples`
 sub-module for more information.
-
 
 ### Settings
 
@@ -93,41 +83,33 @@ There are a few settings that can be set in an appropriate `settings.php` (or
   handlers from being invoked. By default, this variable is not set and the
   JS module will automatically handle any PHP error or exception and display
   them (respecting the site's PHP error display configuration) as an error
-  type status message via `drupal_set_message()`. To disable this, use:
+  type status message via `backdrop_set_message()`. To disable this, use:
   ```php
   $settings['js_silence_php_errors'] = TRUE;
   ```
 - `js_excluded_cache_classes`: This allows to configure a list of cache backend
   classes that should not trigger a full bootstrap on cache misses. By default
-  it only includes the `DrupalFakeCache` class. To change this:
+  it only includes the `BackdropFakeCache` class. To change this:
   ```php
   $settings['js_excluded_cache_classes'] = array('MyCustomCache');
   ```
 
+## Issues
 
-### Credit
+ - Bugs and Feature requests should be reported in the [Issue Queue](https://github.com/backdrop-contrib/js/issues).
 
-Project page: https://www.drupal.org/project/js
+## Current Maintainers
 
-**7.x-2.x**
+ - [Laryn Kragt Bakker](https://github.com/laryn).
+ - Collaboration and co-maintainers welcome!
 
-Authors:
-- Mark Carver (https://www.drupal.org/u/markcarver)
+## Credits
 
-**7.x-1.x**
+ - Ported to Backdrop CMS by [Laryn Kragt Bakker](https://github.com/laryn).
+ - Maintained for Drupal by [michielnugter](https://www.drupal.org/u/michielnugter),
+   and [plach](https://www.drupal.org/u/plach).
 
-Authors:
-- David Herminghaus (https://www.drupal.org/u/doitdave)
-- Michiel Nugter (https://www.drupal.org/u/michielnugter)
+ ## License
 
-Sponsors:
-- Synetic (http://www.synetic.nl)
-
-**6.x, 5.x**
-
-Authors:
-* Daniel F. Kudwien (https://www.drupal.org/u/sun)
-* Stefan M. Kudwien (https://www.drupal.org/u/smk-ka)
-
-Sponsors:
-- unleashed mind (http://www.unleashedmind.com/)
+This project is GPL v2 software. See the LICENSE.txt file in this directory for
+complete text.

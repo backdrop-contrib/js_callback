@@ -1,22 +1,22 @@
 (function ($) {
 
   /**
-   * Drupal behavior.
+   * Backdrop behavior.
    */
-  Drupal.behaviors.jsExample = {
+  Backdrop.behaviors.jsExample = {
     attach: function (context, settings) {
       var $context = $(context);
 
       // Stop form execution.
       var $form = $context.find('#js-callback-examples-form');
       $form.once('example', function () {
-        $form.bind('submit', function (e) {
+        $form.on('submit', function (e) {
           e.preventDefault();
           e.stopPropagation();
         });
         // Make pressing "enter" trigger a click on the nearest callback.
         // @todo Make this attachable somehow?
-        $form.find('input[type=text]').bind('keypress', function (e) {
+        $form.find('input[type=text]').on('keypress', function (e) {
           if (e.keyCode == 13) {
             $(this).closest('[data-js-callback]').trigger('click');
           }
@@ -36,7 +36,7 @@
         var $output = $results.find('pre code');
 
         // Bind click.
-        $callback.bind('click', function (e) {
+        $callback.on('click', function (e) {
           // Prevent default behavior.
           e.preventDefault();
           e.stopPropagation();
@@ -75,7 +75,7 @@
         var $results = $container.find('.results');
         var $output = $results.find('pre code');
 
-        $links.bind('click', function (e) {
+        $links.on('click', function (e) {
           // Prevent default behavior.
           e.preventDefault();
           e.stopPropagation();

@@ -4,11 +4,11 @@
  * JS custom cache handler.
  *
  * This is just a proxy for the actually configured cache backend, that ensures
- * that Drupal is fully bootstrapped if an item cannot be retrieved from cache.
+ * that Backdrop is fully bootstrapped if an item cannot be retrieved from cache.
  * By loading all hook implementations this avoids the risk of having incomplete
  * or corrupt cache entries stored during a callback execution.
  */
-class JsProxyCache implements DrupalCacheInterface {
+class JsProxyCache implements BackdropCacheInterface {
 
   const DEFAULT_BIN_KEY = 'cache_default_class';
 
@@ -36,7 +36,7 @@ class JsProxyCache implements DrupalCacheInterface {
   /**
    * The actual cache backend.
    *
-   * @var DrupalCacheInterface
+   * @var BackdropCacheInterface
    */
   protected $backend;
 
@@ -122,6 +122,41 @@ class JsProxyCache implements DrupalCacheInterface {
   /**
    * {@inheritdoc}
    */
+  public function delete($cid) {
+    return $this->backend->delete($cid);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function deleteMultiple(array $cids) {
+    return $this->backend->deleteMultiple($cids);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function deletePrefix($prefix) {
+    return $this->backend->deletePrefix($prefix);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function flush() {
+    return $this->backend->flush();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function garbageCollection() {
+    return $this->backend->garbageCollection();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function clear($cid = NULL, $wildcard = FALSE) {
     $this->backend->clear($cid, $wildcard);
   }
@@ -134,7 +169,7 @@ class JsProxyCache implements DrupalCacheInterface {
   }
 
   /**
-   * Fully bootstraps Drupal.
+   * Fully bootstraps Backdrop.
    */
   protected function doFullBootstrap() {
     // If a full bootstrap is allowed and the backend class is not configured as
@@ -142,8 +177,8 @@ class JsProxyCache implements DrupalCacheInterface {
     // bootstrap.
     if (static::$fullBootstrapAllowed && !isset(static::$excludedConf[get_class($this->backend)])) {
       static::setFullBootstrapAllowed(FALSE);
-      if (drupal_get_bootstrap_phase() < DRUPAL_BOOTSTRAP_FULL) {
-        js_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+      if (backdrop_get_bootstrap_phase() < BACKDROP_BOOTSTRAP_FULL) {
+        js_bootstrap(BACKDROP_BOOTSTRAP_FULL);
       }
     }
   }

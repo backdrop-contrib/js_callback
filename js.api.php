@@ -27,7 +27,7 @@
  *     See: hook_js_captured_content_alter().
  *   - access callback: (optional) The function to invoke for determining
  *     access to the callback. If set, the minimum bootstrap level must be
- *     DRUPAL_BOOTSTRAP_SESSION to ensure proper access validation against the
+ *     BACKDROP_BOOTSTRAP_SESSION to ensure proper access validation against the
  *     current user. WARNING: If not set, no access checks are performed at all.
  *     Defaults to "user_access" if the below option (access arguments) has
  *     a value.
@@ -42,10 +42,10 @@
  *     js_deliver_json(). Note that this function is called even if the
  *     access checks fail, so any custom delivery callback function should take
  *     that into account. See js_deliver_json() for an example.
- *   - bootstrap: (optional) The bootstrap level Drupal should boot to,
- *     defaults to DRUPAL_BOOTSTRAP_DATABASE. If an access argument/callback or
- *     tokens are used, defaults to DRUPAL_BOOTSTRAP_SESSION. It is important to
- *     keep in mind that, at a bootstrap level below DRUPAL_BOOTSTRAP_FULL, not
+ *   - bootstrap: (optional) The bootstrap level Backdrop should boot to,
+ *     defaults to BACKDROP_BOOTSTRAP_DATABASE. If an access argument/callback or
+ *     tokens are used, defaults to BACKDROP_BOOTSTRAP_SESSION. It is important to
+ *     keep in mind that, at a bootstrap level below BACKDROP_BOOTSTRAP_FULL, not
  *     every module is loaded, which will affect which hook implementations are
  *     actually called. This must be taken into consideration when writing a
  *     callback implementation, because API usages triggering any kind of
@@ -103,7 +103,7 @@
  *     This might cause unwanted behavior and should only be disabled with care.
  *   - token: (optional) Generates a token to prevent CSRF attacks for
  *     authenticated users. When enabled, the minimum bootstrap level will be
- *     DRUPAL_BOOTSTRAP_SESSION to ensure proper token validation against the
+ *     BACKDROP_BOOTSTRAP_SESSION to ensure proper token validation against the
  *     authenticated user. If the callback is only accessible to authenticated
  *     users, it is strongly recommended that this is not disabled, otherwise
  *     your site could potentially be susceptible to CSRF attacks. If the
@@ -113,13 +113,13 @@
  *   - xhprof: (optional) Flag indicating whether to output the called functions
  *     or methods used in the request determined by XHProf. Note: enabling this
  *     property to TRUE will automatically increase the callback's bootstrap
- *     level to DRUPAL_BOOTSTRAP_FULL. This will allow all enabled modules and
+ *     level to BACKDROP_BOOTSTRAP_FULL. This will allow all enabled modules and
  *     includes to be loaded so the callback can succeed. This property is only
  *     intended to be used for debugging purposes since it will always print out
- *     the used functions via drupal_set_message(). It also requires the
+ *     the used functions via backdrop_set_message(). It also requires the
  *     xhprof_enable() and xhprof_disable() functions to be defined (which can
  *     be provided by the XHProf PHP extension).
- *   - xss: (optional) Filters data in drupal_deliver_json() before it's sent to
+ *   - xss: (optional) Filters data in backdrop_deliver_json() before it's sent to
  *     browser. It is strongly recommended that this is not disabled, otherwise
  *     your site will be susceptible to XSS attacks and be considered
  *     "insecure".
@@ -147,7 +147,7 @@ function hook_js_info() {
   }
    */
   $callbacks['complex'] = array(
-    'bootstrap' => DRUPAL_BOOTSTRAP_LANGUAGE,
+    'bootstrap' => BACKDROP_BOOTSTRAP_LANGUAGE,
     'access callback'  => 'my_module_custom_access_check',
     'callback function' => 'my_module_custom_callback_function',
     'dependencies' => array('field', 'node', 'system'),
@@ -248,7 +248,7 @@ function hook_js_server_info() {
  */
 function hook_js_server_info_alter(array &$servers) {
   // Use a file to provide rewrite example.
-  $path = drupal_get_path('module', 'my_module') . '/js-rewrites.conf';
+  $path = backdrop_get_path('module', 'my_module') . '/js-rewrites.conf';
   $callbacks['apache']['rewrite'] = file_get_contents($path);
 }
 
