@@ -75,7 +75,9 @@
     // Force prefix the URL to use the internal JS module callback path. If
     // requests do not want it to be processed by the JS module, then the
     // normal $.ajax() method should be used instead.
-    this.options.url = base + prefix + 'js/' + (this.options.url ? prefix + this.options.url : '');
+
+    const endpoint = Backdrop.settings.jsEndpoint || 'js';
+    this.options.url = base + prefix + endpoint + '/' + (this.options.url ? prefix + this.options.url : '');
 
     // Normalize data keys to Backdrop variable standards.
     JS.snakeCaseObject(this.options.data);

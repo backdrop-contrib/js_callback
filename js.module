@@ -73,7 +73,7 @@ function js_library_info() {
       0 => array(
         'type' => 'setting',
         'data' => array(
-          'jsEndpoint' => config_get('js.settings', 'endpoint'),
+          'jsEndpoint' => settings_get('js_endpoint'),
         ),
       ),
     ),
@@ -152,12 +152,12 @@ function js_js_info() {
  */
 function js_js_server_info() {
   $base_path = preg_quote(base_path());
-  $endpoint = preg_quote(config_get('js.settings', 'endpoint'));
+  $endpoint = preg_quote(settings_get('js_endpoint'));
   $regexp = '(?:[a-z]{2}(?:-[A-Za-z]{2,4})?/)?(?:' . $endpoint . '|' . $endpoint . '/.*)';
 
   $header = array(
     '###',
-    '### Support for https://www.backdropcms.org/project/js module.',
+    '### Support for https://www.backdropcms.org/project/js_callback module.',
     '###',
   );
 
@@ -604,13 +604,13 @@ function _js_log_php_error(array $error, $fatal = FALSE) {
 function js_execute_request() {
   // Provide a global JS variable that will be used through out the request.
   global $_js;
-  global $conf;
+  global $settings;
 
   // Immediately start capturing any output.
   ob_start();
 
   // Override error and exception handlers to capture output.
-  if (empty($conf['js_silence_php_errors'])) {
+  if (empty($settings['js_silence_php_errors'])) {
     set_error_handler('_js_error_handler');
     set_exception_handler('_js_exception_handler');
     register_shutdown_function('_js_fatal_error_handler');
@@ -647,7 +647,7 @@ function js_execute_request() {
   $_js['args'] = explode('/', $_GET['q']);
 
   // Determine the JS "endpoint".
-  $endpoint = config_get('js.settings', 'endpoint');
+  $endpoint = settings_get('js_endpoint');
 
   // Determine if there is a language prefix in the path.
   $_js['lang'] = FALSE;

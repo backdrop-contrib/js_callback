@@ -215,11 +215,11 @@ function hook_js_captured_content_alter(&$result, $captured) {
  */
 function hook_js_server_info() {
   $base_path = str_replace('/', '\\/', base_path());
-  $endpoint = config_get('js.settings', 'endpoint');
+  $endpoint = settings_get('js_endpoint');
 
   $header = array(
     '###',
-    '### Support for https://www.drupal.org/project/js module.',
+    '### Support for https://www.backdropcms.org/project/js_callback module.',
     '###',
   );
 

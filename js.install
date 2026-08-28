@@ -97,7 +97,6 @@ function js_uninstall() {
 function js_update_1000() {
   $config = config('js.settings');
   $config->set('server_software', update_variable_get('js_server_software', 'apache'));
-  $config->set('endpoint', update_variable_get('js_endpoint', 'js'));
   $config->save();
   // Remove old variables.
   update_variable_del('js_server_software');
