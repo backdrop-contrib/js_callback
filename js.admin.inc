@@ -15,7 +15,7 @@ function js_configure_form($form, &$form_state) {
     '#type' => 'fieldset',
     '#title' => t('Server rewrite rules'),
     '#description' => t('Provides a template for common HTTP server rewrite rules. If the type of server this site is using is not listed here, you will need to ensure that any request starting with <code>/@endpoint</code> is forwarded to <code>js.php</code>', array(
-      '@endpoint' => variable_get('js_endpoint', 'js'),
+      '@endpoint' => settings_get('js_endpoint'),
     )),
   );
 

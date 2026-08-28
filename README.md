@@ -82,11 +82,12 @@ sub-module for more information.
 
 ### Settings
 
-There are a few variables that can be set in an appropriate `settings.php` file:
+There are a few settings that can be set in an appropriate `settings.php` (or
+`settings.local.php`) file:
 
 - `js_endpoint`: Configures the expected URL endpoint:
   ```php
-  $conf['js_endpoint'] = 'js';
+  $settings['js_endpoint'] = 'js';
   ```
 - `js_silence_php_errors`: Prevents custom JS module PHP error and exception
   handlers from being invoked. By default, this variable is not set and the
@@ -94,13 +95,13 @@ There are a few variables that can be set in an appropriate `settings.php` file:
   them (respecting the site's PHP error display configuration) as an error
   type status message via `drupal_set_message()`. To disable this, use:
   ```php
-  $conf['js_silence_php_errors'] = TRUE;
+  $settings['js_silence_php_errors'] = TRUE;
   ```
 - `js_excluded_cache_classes`: This allows to configure a list of cache backend
   classes that should not trigger a full bootstrap on cache misses. By default
   it only includes the `DrupalFakeCache` class. To change this:
   ```php
-  $conf['js_excluded_cache_classes'] = array('MyCustomCache');
+  $settings['js_excluded_cache_classes'] = array('MyCustomCache');
   ```
 
 

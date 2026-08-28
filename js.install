@@ -90,7 +90,16 @@ function js_uninstall() {
   if (variable_get('js_server_software', 'apache') == 'apache' && strpos(file_get_contents(DRUPAL_ROOT . DIRECTORY_SEPARATOR . '.htaccess'), 'js.php') !== FALSE) {
     drupal_set_message(t('The js.php file is still referenced in the .htaccess file. Please make sure to remove the .htaccess handling for js.php for a full uninstall.'));
   }
+}
 
-  // Delete used variables.
-  variable_del('js_server_software');
+/**
+ * Update the JS module's variables to use the new config system.
+ */
+function js_update_1000() {
+  $config = config('js.settings');
+  $config->set('server_software', update_variable_get('js_server_software', 'apache'));
+  $config->save();
+  // Remove old variables.
+  update_variable_del('js_server_software');
+  update_variable_del('js_endpoint');
 }
