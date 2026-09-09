@@ -289,8 +289,8 @@ function js_callback_process_request(array &$info) {
         $default = $param->isDefaultValueAvailable() ? $param->getDefaultValue() : NULL;
 
         // Determine if callback parameter has been type hinted with a class.
-        if ($class = $param->getType()) {
-          $default = array('class' => $class->getName(), 'default' => $default);
+        if (($param_type = $param->getType()) && ($class = $param_type->getName())) {
+          $default = array('class' => $class, 'default' => $default);
         }
 
         // Set the default value.
@@ -345,8 +345,16 @@ function js_callback_process_request(array &$info) {
     // Sort the remaining $_REQUEST data based on key name.
     ksort($data);
 
-    // Merge existing arguments, parameters and any remaining request data.
-    $info["$type arguments"] = array_merge($info["$type arguments"], $parameters, array($data));
+    // In PHP 8 it is a fatal error to have a numeric key in args appear after
+    // a string key, or to have a string key that does not match the name of
+    // any parameter of callback.
+    if (version_compare(phpversion(), '8', '>=')) {
+      $info["$type arguments"] = array_merge($info["$type arguments"], $parameters);
+    }
+    else {
+      // Merge existing arguments, parameters and any remaining request data.
+      $info["$type arguments"] = array_merge($info["$type arguments"], $parameters, array($data));
+    }
   }
 }
 
