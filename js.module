@@ -85,11 +85,11 @@ function js_library_info() {
 }
 
 /**
- * Implements hook_preprocess_html().
+ * Implements hook_preprocess_page().
  *
  * Provide necessary JS functionality so modules can generate easier requests.
  */
-function js_preprocess_html(&$variables) {
+function js_preprocess_page(&$variables) {
   // Add any unique tokens created to the current page request. This is to help
   // ensure valid JS requests. Note, this only adds tokens that were generated
   // on this page request. It does not provide tokens for all callbacks.
